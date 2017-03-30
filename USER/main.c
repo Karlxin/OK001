@@ -17,7 +17,7 @@
 extern void TIM3_PWM_Init(u16 arr, u16 psc);
 extern void TIM4_Cap_Init(u16 arr, u16 psc);
 extern void TIM5_Int_Init(u16 arr, u16 psc);
-extern void Moto_RPY(int16_t roll, int16_t pitch, int16_t throttle, int16_t yaw);
+extern void Moto_RPY(int16_t desthrottle);
 extern void MS5611_init(void);
 extern void IIC_Init(void);
 
@@ -25,6 +25,7 @@ extern int16_t channel1_in, channel2_in, channel3_in, channel4_in;
 
 extern void MS561101BA_RESET(void);
 
+extern void ANO_DT_Send_MotoPWM(u16 m_1,u16 m_2,u16 m_3,u16 m_4,u16 m_5,u16 m_6,u16 m_7,u16 m_8);
 extern void ANO_DT_Send_Senser(s16 a_x, s16 a_y, s16 a_z, s16 g_x, s16 g_y, s16 g_z, s16 m_x, s16 m_y, s16 m_z, s32 bar);
 extern void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw, s32 alt, u8 fly_model, u8 armed);
 extern void ag2q2rpy(float gx, float gy, float gz, float ax, float ay, float az, float *pitch, float *roll, float *yaw);
@@ -49,7 +50,6 @@ short gyrox, gyroy, gyroz;  //陀螺仪原始数据
 short temp;                 //温度
 short gyrox_chushi, gyroy_chushi, gyroz_chushi; //陀螺仪最开始放在地面时候的一些数据,当作初始值要减去的
 float temp_gyxc = 0, temp_gyyc = 0, temp_gyzc = 0; //用来存放陀螺仪数据，并计算出陀螺仪初始值,采用预估态与测量值平均权重平均
-float gyrox_filter[7]= {0},gyroy_filter[7]= {0},gyroz_filter[7]= {0}; //用来存放陀螺仪角速度的三值滤波器暂存数据,第四位用来存放陀螺仪三值滤波的返回值，即经过滤波后的值
 short gyro_jishu=0;//滤波计数,一般到3回0,即永远不能到3
 
 extern void filter_threeValue(void);//用来三值滤波的函数,现在只滤波陀螺仪角速度
@@ -83,9 +83,12 @@ extern int32_t  TEMP;                   //气压计温度
 extern void MS561101BA_getPressure(void);
 extern void MS561101BA_GetTemperature(void);
 
-u8 roll_in_flag=0;//绕X轴有有效遥控信号输入则为1，否则为0
-u8 pitch_in_flag=0;
-u8 yaw_in_flag=0;
+float roll_err, pitch_err, yaw_err;//误差值,roll_err=roll-desroll,其中desroll为遥控信号线性映射的角度值
+float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
+
+short gyrox_out,gyroy_out,gyroz_out;
+
+extern void Gyro_filter(void);
 
 int main(void)
 {
@@ -94,15 +97,14 @@ int main(void)
     u8 jiesuokeyi = 0;//定义解锁可以标志位
     u16 baochijiesuo = 0;//定义保持解锁计数器
     u16 baochijiasuo = 0;//定义保持加锁计数器
-    int16_t desroll, despitch, desyaw, desthrottle;//定义想要的横滚，俯仰，偏航，油门
-    float temp1, temp2, temp3; //用来作为中间变量,以及将油门值不至于那么大
+    int16_t temp1, temp2,  desthrottle, temp4; //用来作为中间变量,将遥控信号转换为预期角度
 
     SystemInit();//系统初始化
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//抢先等级分为0，1，2，3；子等级分为0,1(2:0)
     delay_init();//延迟初始化
 
     //Uart1_Init(115200);//给ATKXCOMV2.0读数据时需要打开的通用异步首发串口波特率速率
-    //Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
+    Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
 
     TIM3_PWM_Init(19999, 71);  //50Hz
 
@@ -176,33 +178,33 @@ int main(void)
                 desthrottle = channel3_in;//想要的油门等于通道三接收到的信号占空比
                 if(channel1_in < 1507 - deadzone || channel1_in > 1507 + deadzone)//通道一接收信号不在工程意义中间
                 {
-                    desroll = 1507 - channel1_in;//想要的横滚等于通道一中间差
-                    roll_in_flag=1;//通道一有有效信号输入
+                    temp1 =  channel1_in-1507 ;//想要的横滚等于通道一中间差
+					desroll= (float)temp1 *0.0361446;//转换为正负15
+					
                 }
                 else//通道一接收信号在工程意义中间
                 {
                     desroll = 0;//想要的横滚为零
-                    roll_in_flag=0;//通道一没有效信号输入
                 }
                 if(channel2_in < 1508 - deadzone || channel2_in > 1508 + deadzone)//通道二接收信号不在工程意义中间
                 {
-                    despitch = 1508 - channel2_in;//想要的俯仰等于通道二中位差
-                    pitch_in_flag=1;//通道二有有效信号输入
+                    temp2 = 1508 - channel2_in;//想要的俯仰等于通道二中位差
+					despitch=(float)temp2*0.0361446;//转换为正负15
+					
                 }
                 else//通道二接收信号在工程意义中间
                 {
                     despitch = 0;//想要的俯仰为零
-                    pitch_in_flag=0;//通道二没有有效信号输入
                 }
                 if(channel4_in < 1507 - deadzone || channel4_in > 1507 + deadzone)//通道四接收信号不在工程意义中间
                 {
-                    desyaw = 1507 - channel4_in;//想要的偏航为通道四中位差
-                    yaw_in_flag=1;//通道四有有效信号输入
+                    temp4 = 1507 - channel4_in;//想要的偏航为通道四中位差
+					desyaw= (float)temp4*0.0361446;//转换为正负15
+					
                 }
                 else//通道四接收信号在工程意义中间
                 {
                     desyaw = 0;//想要的偏航等于零
-                    yaw_in_flag=0;//通道四没有有效信号输入
                 }
             }
             else
@@ -212,15 +214,7 @@ int main(void)
                 desroll = despitch = desyaw = 0;//想要的横滚俯仰偏航均为零
             }
 
-            temp1 = (float)desroll * 0.200; //变为以前的五分之一
-            temp2 = (float)despitch * 0.200;
-            temp3 = (float)desyaw * 0.200;
-
-            //下面这句话为尝试十三要做的事
-            temp3 = 0;
-
-            /*Moto_RPY(desroll, despitch, desthrottle, desyaw);//将想要的角度输入给角度到油门值函数*/
-            Moto_RPY((int)temp1, (int)temp2, desthrottle, (int)temp3);//由于上面那句话遥控直接控制的量实在太大，所以改改
+            Moto_RPY(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数
 
             //printf("temp1=%d\r\n temp2=%d\r\n temp3=%d\r\n\r\n",(int)temp1, (int)temp2,(int)temp3);//测试四通道输出的值
             //printf("temp1=%f\r\n temp2=%f\r\n temp3=%f\r\n\r\n",temp1,temp2,temp3);//测试四通道输出的值
@@ -298,7 +292,6 @@ int main(void)
         if(xitongshijian * 0.1f > shihaomiao + 1)
         {
             shihaomiao++;//每过十毫秒来这一次
-            cyberNation();//更新电机
             mpu_dmp_get_data(&pitch, &roll, &yaw);//此句话消耗惊人的52ms,去掉50ms延迟后只需要2.1ms,这是mpu硬解姿态
 
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //得到加速度传感器数据,耗时0.6ms
@@ -320,7 +313,13 @@ int main(void)
                 //gyroz_sd = (float)gyroz * 0.0610352;
             }
 
-            filter_threeValue();//三值滤波
+            //filter_threeValue();//三值滤波
+			
+			Gyro_filter();//滑动窗口滤波
+			roll_err=roll-desroll;//得到roll角度误差
+			pitch_err=pitch-despitch;//得到pitch角度误差
+			yaw_err=yaw-desyaw;//得到yaw角度误差
+			cyberNation();//更新电机
 
             //ag2q2rpy(gyrox_sr+0.0553938, gyroy_sr-0.0170442, gyroz_sr-0.0159790, aacx-960, aacy-350, aacz+1085, &pitch, &roll, &yaw);//计算耗时0.25ms;
             //__nop();//上面三条总耗时1.4ms,每秒钟搞了101次
@@ -330,12 +329,16 @@ int main(void)
             //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox, gyroy, gyroz);
             //__nop();
 
-            //cN2rpy();//示波查看纠正量,一般与角度为反值
-            //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi,(s32)rjz,(s32)pjz,(s32)yjz,0);
+            //cN2rpy();//示波查看电机矫正量,与真实角度为反值,与想要角度为正值
+            //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi,(s16)rjz,(s16)pjz,(s16)yjz,(s32)0);
             //ANO_DT_Send_Senser((s16)gyrox_filter[6]-gyrox_chushi,(s16)gyroy_filter[6]-gyroy_chushi ,(s16)gyroz_filter[6]-gyroz_chushi , gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi,(s32)rjz,(s32)pjz,(s32)yjz,0);
             //ANO_DT_Send_Status(roll, pitch, yaw, (s32)0, (u8)0, (u8)0);
-
-
+			
+			ANO_DT_Send_Status(roll, pitch, yaw, (s32)0, (u8)0, (u8)0);
+			//ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox_out, gyroy_out, gyroz_out,(s16)0,(s16)0,(s16)0,(s32)0);
+			ANO_DT_Send_MotoPWM((u16) cNd1,(u16) cNd2,(u16) cNd3,(u16) cNd4,(u16) 0,(u16) 0,(u16) 0,(u16) 0);
+			
+			//ANO_DT_Send_Senser(gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi, gyrox_out, gyroy_out, gyroz_out,gyrox_chushi,gyroy_chushi,gyroz_chushi,(s32)0);
         }
         if(xitongshijian * 0.05f > ershihaomiao + 1)
         {

@@ -37,10 +37,15 @@ extern short gyrox_chushi,gyroy_chushi,gyroz_chushi;//陀螺仪最开始放在地面时候的
 static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007629;*/
 
 //PD控制器调试上端
-//各种调试，PD控制器，x控制0，y控制0，z控制300,尝试3指明的方向为，角速度只直接控制z
-//角度预估在30度以内，直接让x和y控制300的油门,预估rollpitch在30度内，yaw角速度在正负10000
-float kp_theta_x = 0, kp_theta_y = 0, kp_theta_z = 0;
-float kp_omega_x = 0.08, kp_omega_y = 0.08, kp_omega_z = 0.05;
+//各种调试，PD控制器
+//角度预估在15度以内,故让角度控制的油门为15*4=60
+//角速度暂时没有估计,暂时估计在10000以内
+//65536/2*0.004=131.072
+//10000*0.04=400
+float KP_THETA_X = 4.0, KP_THETA_Y = 4.0, KP_THETA_Z = 0;//常量
+float KP_OMEGA_X = 0.04, KP_OMEGA_Y = 0.04, KP_OMEGA_Z = 0.02;//常量
+float kp_theta_x = 4.0, kp_theta_y = 4.0, kp_theta_z = 0;//变量
+float kp_omega_x = 0.04, kp_omega_y = 0.04, kp_omega_z = 0.02;//变量
 //PD控制器调试下端
 
 extern float rjz,pjz,yjz;//将cNd1等数据分别转换为roll,pitch,yaw方向的纠正量，以便示波观察
@@ -51,6 +56,11 @@ extern short gyro_jishu;//滤波计数,一般到3回0,即永远不能到3
 extern u8 roll_in_flag;//绕X轴有有效遥控信号输入则为1，否则为0
 extern u8 pitch_in_flag;
 extern u8 yaw_in_flag;
+
+extern float roll_err, pitch_err, yaw_err;//误差值,roll_err=roll-desroll,其中desroll为遥控信号线性映射的角度值
+extern float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
+
+extern short gyrox_out,gyroy_out,gyroz_out;
 
 //此函数直接控制电机
 void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int16_t MOTO4_PWM)
@@ -72,13 +82,13 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 }
 
 //此函数将想要的角度映射成油门输入给油门函数
-void Moto_RPY(int16_t desroll, int16_t despitch, int16_t desthrottle, int16_t desyaw)
+void Moto_RPY(int16_t desthrottle)
 {
     int16_t d1, d2, d3, d4;
-    d1 = desthrottle + desroll - despitch - desyaw+cNd1; //            CW3     1CCW	     / \				 
-    d2 = desthrottle - desroll + despitch - desyaw+cNd2; //  俯视图        * *          / | \ X轴      	  Y轴
-    d3 = desthrottle - desroll - despitch + desyaw+cNd3; //                 *             |                <=======
-    d4 = desthrottle + desroll + despitch + desyaw+cNd4; //      	   CCW2    4CW        |
+    d1 = desthrottle+cNd1; //            CW3     1CCW	   / \				 
+    d2 = desthrottle+cNd2; //  俯视图        * *          / | \ X轴      	  Y轴
+    d3 = desthrottle+cNd3; //                 *             |                <=======
+    d4 = desthrottle+cNd4; //      	     CCW2    4CW        |
 
     Moto_PwmRflash(d1, d2, d3, d4);//此函数是最终改变油门的函数
 }
@@ -95,46 +105,44 @@ int16_t xianzhi(int16_t a)
 	{
 		return -300;
 	}
+	
+	return a;
+}
+
+float sfabs(float a)//单精度绝对值函数
+{
+	if(a>0.0000000)
+	{
+		return a;
+	}
+		
+	return -a;
+}
+
+float chuli(float a)//当a小于1时，返回1，当a大于等于1时，返回1/a
+{
+	if(a<1)
+	{
+		return 1;
+	}
+	return 1/a;
 }
 
 //此函数将角度和角速度值处理后转换为自动控制量!!!哈哈哈终于到这了！！！我好兴奋啊！！！
 void cyberNation(void)
 {
-	/*
-    cNd1 = +roll * kp_theta_x + pitch * kp_theta_y + yaw * kp_theta_z + (gyrox-gyrox_chushi) * kp_omega_x + (gyroy-gyroy_chushi) * kp_omega_y + (gyroz-gyroz_chushi) * kp_omega_z;
-    cNd2 = -roll * kp_theta_x - pitch * kp_theta_y + yaw * kp_theta_z - (gyrox-gyrox_chushi) * kp_omega_x - (gyroy-gyroy_chushi) * kp_omega_y + (gyroz-gyroz_chushi) * kp_omega_z;
-    cNd3 = -roll * kp_theta_x + pitch * kp_theta_y - yaw * kp_theta_z - (gyrox-gyrox_chushi) * kp_omega_x + (gyroy-gyroy_chushi) * kp_omega_y - (gyroz-gyroz_chushi) * kp_omega_z;
-    cNd4 = +roll * kp_theta_x - pitch * kp_theta_y - yaw * kp_theta_z + (gyrox-gyrox_chushi) * kp_omega_x - (gyroy-gyroy_chushi) * kp_omega_y - (gyroz-gyroz_chushi) * kp_omega_z;
-	*/
+	kp_omega_x=KP_OMEGA_X*chuli(sfabs(roll_err));//误差越多，放弃越多的角速度锁,1/15=0.06666666666666
+	kp_omega_y=KP_OMEGA_Y*chuli(sfabs(pitch_err));
 	
-	kp_omega_x = 0.08;//X轴角速度P值的原始值
-	if(roll_in_flag)//如果X轴有遥控输入
-	{
-		kp_omega_x=0;//自动控制放弃对X轴的控制
-	}
-	
-	kp_omega_y = 0.08;
-	if(pitch_in_flag)
-	{
-		kp_omega_y=0;
-	}
-	kp_omega_z = 0.05;
-	
-	if(yaw_in_flag)
-	{
-		kp_omega_z=0;
-	}
-	
-	cNd1 = +roll * kp_theta_x + pitch * kp_theta_y + yaw * kp_theta_z + (gyrox_filter[6]-gyrox_chushi) * kp_omega_x + (gyroy_filter[6]-gyroy_chushi) * kp_omega_y + (gyroz_filter[6]-gyroz_chushi) * kp_omega_z;
-    cNd2 = -roll * kp_theta_x - pitch * kp_theta_y + yaw * kp_theta_z - (gyrox_filter[6]-gyrox_chushi) * kp_omega_x - (gyroy_filter[6]-gyroy_chushi) * kp_omega_y + (gyroz_filter[6]-gyroz_chushi) * kp_omega_z;
-    cNd3 = -roll * kp_theta_x + pitch * kp_theta_y - yaw * kp_theta_z - (gyrox_filter[6]-gyrox_chushi) * kp_omega_x + (gyroy_filter[6]-gyroy_chushi) * kp_omega_y - (gyroz_filter[6]-gyroz_chushi) * kp_omega_z;
-    cNd4 = +roll * kp_theta_x - pitch * kp_theta_y - yaw * kp_theta_z + (gyrox_filter[6]-gyrox_chushi) * kp_omega_x - (gyroy_filter[6]-gyroy_chushi) * kp_omega_y - (gyroz_filter[6]-gyroz_chushi) * kp_omega_z;
+	cNd1 = +roll_err * kp_theta_x + pitch_err * kp_theta_y + yaw_err * kp_theta_z + gyrox_out * kp_omega_x + gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
+    cNd2 = -roll_err * kp_theta_x - pitch_err * kp_theta_y + yaw_err * kp_theta_z - gyrox_out * kp_omega_x - gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
+    cNd3 = -roll_err * kp_theta_x + pitch_err * kp_theta_y - yaw_err * kp_theta_z - gyrox_out * kp_omega_x + gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
+    cNd4 = +roll_err * kp_theta_x - pitch_err * kp_theta_y - yaw_err * kp_theta_z + gyrox_out * kp_omega_x - gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
 	
 	cNd1=xianzhi(cNd1);
 	cNd2=xianzhi(cNd2);
 	cNd3=xianzhi(cNd3);
 	cNd4=xianzhi(cNd4);
-
 }
 
 //此函数将cNd1~cNd4电机单个纠正量转化为roll,pitch,yaw方向的纠正量
@@ -145,37 +153,35 @@ void cN2rpy(void)
 	yjz=-cNd1-cNd2+cNd3+cNd4;
 }
 
-void filter_threeValue(void)
+#define Filter_Num 2//二值平均?
+void Gyro_filter(void)
 {
-	int i;
-	gyrox_filter[gyro_jishu]=gyrox;
-	gyroy_filter[gyro_jishu]=gyroy;
-	gyroz_filter[gyro_jishu]=gyroz;
+	static short Filter_x[Filter_Num],Filter_y[Filter_Num],Filter_z[Filter_Num];
+	static uint8_t Filter_count;
+	int32_t Filter_sum_x=0,Filter_sum_y=0,Filter_sum_z=0;
+	uint8_t i;
 	
+	Filter_x[Filter_count]=gyrox-gyrox_chushi;
+	Filter_y[Filter_count]=gyroy-gyroy_chushi;
+	Filter_z[Filter_count]=gyroz-gyroz_chushi;
 	
-	if(gyro_jishu==5)
+	for(i=0;i<Filter_Num;i++)
 	{
-		gyro_jishu=0;
-	}
-	else
-	{
-		gyro_jishu++;
-	}
-	
-	gyrox_filter[6]=0;
-	gyroy_filter[6]=0;
-	gyroz_filter[6]=0;
-	
-	for(i=0;i<6;i++)
-	{
-	gyrox_filter[6]+=gyrox_filter[i];
-	gyroy_filter[6]+=gyroy_filter[i];
-	gyroz_filter[6]+=gyroz_filter[i];
+		Filter_sum_x+=Filter_x[i];
+		Filter_sum_y+=Filter_y[i];
+		Filter_sum_z+=Filter_z[i];
 	}
 	
-	gyrox_filter[6]*=0.1666667;
-	gyroy_filter[6]*=0.1666667;
-	gyroz_filter[6]*=0.1666667;
+	gyrox_out=Filter_sum_x/Filter_Num;
+	gyroy_out=Filter_sum_y/Filter_Num;
+	gyroz_out=Filter_sum_z/Filter_Num;
+	
+	Filter_count++;
+	
+	if(Filter_count==Filter_Num)
+	{
+		Filter_count=0;
+	}
 }
 
 

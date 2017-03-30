@@ -209,5 +209,42 @@ void ANO_DT_Send_Senser(s16 a_x,s16 a_y,s16 a_z,s16 g_x,s16 g_y,s16 g_z,s16 m_x,
 	ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
+void ANO_DT_Send_MotoPWM(u16 m_1,u16 m_2,u16 m_3,u16 m_4,u16 m_5,u16 m_6,u16 m_7,u16 m_8)
+{
+	u8 _cnt=0;
+	u8 sum = 0;
+	u8 i=0;
+	
+	data_to_send[_cnt++]=0xAA;
+	data_to_send[_cnt++]=0xAA;
+	data_to_send[_cnt++]=0x06;
+	data_to_send[_cnt++]=0;
+	
+	data_to_send[_cnt++]=BYTE1(m_1);
+	data_to_send[_cnt++]=BYTE0(m_1);
+	data_to_send[_cnt++]=BYTE1(m_2);
+	data_to_send[_cnt++]=BYTE0(m_2);
+	data_to_send[_cnt++]=BYTE1(m_3);
+	data_to_send[_cnt++]=BYTE0(m_3);
+	data_to_send[_cnt++]=BYTE1(m_4);
+	data_to_send[_cnt++]=BYTE0(m_4);
+	data_to_send[_cnt++]=BYTE1(m_5);
+	data_to_send[_cnt++]=BYTE0(m_5);
+	data_to_send[_cnt++]=BYTE1(m_6);
+	data_to_send[_cnt++]=BYTE0(m_6);
+	data_to_send[_cnt++]=BYTE1(m_7);
+	data_to_send[_cnt++]=BYTE0(m_7);
+	data_to_send[_cnt++]=BYTE1(m_8);
+	data_to_send[_cnt++]=BYTE0(m_8);
+	
+	data_to_send[3] = _cnt-4;
+
+	for(i=0;i<_cnt;i++)
+		sum += data_to_send[i];
+	
+	data_to_send[_cnt++]=sum;
+	
+	ANO_DT_Send_Data(data_to_send, _cnt);
+}
 
 

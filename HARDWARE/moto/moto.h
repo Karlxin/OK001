@@ -6,7 +6,7 @@
 #define Moto_PwmMax 2000
 void Moto_PwmRflash(int16_t MOTO1_PWM,int16_t MOTO2_PWM,int16_t MOTO3_PWM,int16_t MOTO4_PWM);
 void cyberNation(void);
-void Moto_RPY(int16_t desroll,int16_t despitch,int16_t desthrottle,int16_t desyaw);
+void Moto_RPY(int16_t desthrottle);
 #endif
 
 
