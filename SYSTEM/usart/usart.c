@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include "led.h"
 #include "imu.h"
-#include "tim.h"
 
 #define BYTE0(dwTemp)       (*(char *)(&dwTemp))
 #define BYTE1(dwTemp)       (*((char *)(&dwTemp) + 1))

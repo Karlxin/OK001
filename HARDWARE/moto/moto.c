@@ -39,14 +39,18 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //PD控制器调试上端
 //各种调试，PD控制器，x控制0，y控制0，z控制300,尝试3指明的方向为，角速度只直接控制z
 //角度预估在30度以内，直接让x和y控制300的油门,预估rollpitch在30度内，yaw角速度在正负10000
-static float kp_theta_x = 0, kp_theta_y = 0, kp_theta_z = 0;
-static float kp_omega_x = 0.08, kp_omega_y = 0.08, kp_omega_z = 0.05;
+float kp_theta_x = 0, kp_theta_y = 0, kp_theta_z = 0;
+float kp_omega_x = 0.08, kp_omega_y = 0.08, kp_omega_z = 0.05;
 //PD控制器调试下端
 
 extern float rjz,pjz,yjz;//将cNd1等数据分别转换为roll,pitch,yaw方向的纠正量，以便示波观察
 
 extern float gyrox_filter[7],gyroy_filter[7],gyroz_filter[7];//用来存放陀螺仪角速度的三值滤波器暂存数据,第四位用来存放陀螺仪三值滤波的返回值，即经过滤波后的值
 extern short gyro_jishu;//滤波计数,一般到3回0,即永远不能到3
+
+extern u8 roll_in_flag;//绕X轴有有效遥控信号输入则为1，否则为0
+extern u8 pitch_in_flag;
+extern u8 yaw_in_flag;
 
 //此函数直接控制电机
 void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int16_t MOTO4_PWM)
@@ -103,6 +107,24 @@ void cyberNation(void)
     cNd4 = +roll * kp_theta_x - pitch * kp_theta_y - yaw * kp_theta_z + (gyrox-gyrox_chushi) * kp_omega_x - (gyroy-gyroy_chushi) * kp_omega_y - (gyroz-gyroz_chushi) * kp_omega_z;
 	*/
 	
+	kp_omega_x = 0.08;//X轴角速度P值的原始值
+	if(roll_in_flag)//如果X轴有遥控输入
+	{
+		kp_omega_x=0;//自动控制放弃对X轴的控制
+	}
+	
+	kp_omega_y = 0.08;
+	if(pitch_in_flag)
+	{
+		kp_omega_y=0;
+	}
+	kp_omega_z = 0.05;
+	
+	if(yaw_in_flag)
+	{
+		kp_omega_z=0;
+	}
+	
 	cNd1 = +roll * kp_theta_x + pitch * kp_theta_y + yaw * kp_theta_z + (gyrox_filter[6]-gyrox_chushi) * kp_omega_x + (gyroy_filter[6]-gyroy_chushi) * kp_omega_y + (gyroz_filter[6]-gyroz_chushi) * kp_omega_z;
     cNd2 = -roll * kp_theta_x - pitch * kp_theta_y + yaw * kp_theta_z - (gyrox_filter[6]-gyrox_chushi) * kp_omega_x - (gyroy_filter[6]-gyroy_chushi) * kp_omega_y + (gyroz_filter[6]-gyroz_chushi) * kp_omega_z;
     cNd3 = -roll * kp_theta_x + pitch * kp_theta_y - yaw * kp_theta_z - (gyrox_filter[6]-gyrox_chushi) * kp_omega_x + (gyroy_filter[6]-gyroy_chushi) * kp_omega_y - (gyroz_filter[6]-gyroz_chushi) * kp_omega_z;
@@ -112,6 +134,7 @@ void cyberNation(void)
 	cNd2=xianzhi(cNd2);
 	cNd3=xianzhi(cNd3);
 	cNd4=xianzhi(cNd4);
+
 }
 
 //此函数将cNd1~cNd4电机单个纠正量转化为roll,pitch,yaw方向的纠正量

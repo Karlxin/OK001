@@ -434,11 +434,6 @@
               <FilePath>..\HARDWARE\LED\led.c</FilePath>
             </File>
             <File>
-              <FileName>TIM.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\TIM3\TIM.c</FilePath>
-            </File>
-            <File>
               <FileName>moto.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\moto\moto.c</FilePath>

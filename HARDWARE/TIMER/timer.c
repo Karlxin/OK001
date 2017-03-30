@@ -92,7 +92,6 @@ void TIM5_Int_Init(u16 arr, u16 psc)
     NVIC_Init(&NVIC_InitStructure);  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
 
     TIM_Cmd(TIM5, ENABLE);  //使能TIMx外设
-
 }
 
 //定时器五计时初始化下端
@@ -104,8 +103,6 @@ void TIM5_IRQHandler(void)   //TIM5中断,每过一毫秒就搞一次
         TIM_ClearITPendingBit(TIM5, TIM_IT_Update  );  //清除TIMx的中断待处理位:TIM 中断源
         xitongshijian++;//每毫秒过来一次
     }
-
-
 }
 
 
