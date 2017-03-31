@@ -40,12 +40,12 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //各种调试，PD控制器
 //角度预估在15度以内,故让角度控制的油门为15*4=60
 //角速度暂时没有估计,暂时估计在10000以内
-//65536/2*0.004=131.072
-//10000*0.04=400
-float KP_THETA_X = 4.0, KP_THETA_Y = 4.0, KP_THETA_Z = 4.0;//常量
-float KP_OMEGA_X = 0.05, KP_OMEGA_Y = 0.05, KP_OMEGA_Z = 0;//常量
-float kp_theta_x = 4.0, kp_theta_y = 4.0, kp_theta_z = 4.0;//变量
-float kp_omega_x = 0.05, kp_omega_y = 0.05, kp_omega_z = 0;//变量
+//32767*0.004=131.072
+//10000*0.05=500
+float KP_THETA_X = 3, KP_THETA_Y = 3, KP_THETA_Z = 3;//常量
+float KP_OMEGA_X = 0.05, KP_OMEGA_Y = 0.05, KP_OMEGA_Z = 0.025;//常量
+float kp_theta_x = 3, kp_theta_y = 3, kp_theta_z = 3;//变量
+float kp_omega_x = 0.05, kp_omega_y = 0.05, kp_omega_z = 0.025;//变量
 //PD控制器调试下端
 
 extern float rjz,pjz,yjz;//将cNd1等数据分别转换为roll,pitch,yaw方向的纠正量，以便示波观察
