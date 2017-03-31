@@ -247,4 +247,43 @@ void ANO_DT_Send_MotoPWM(u16 m_1,u16 m_2,u16 m_3,u16 m_4,u16 m_5,u16 m_6,u16 m_7
 	ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
+void ANO_DT_Send_RCData(u16 thr,u16 yaw,u16 rol,u16 pit,u16 aux1,u16 aux2,u16 aux3,u16 aux4,u16 aux5,u16 aux6)
+{
+	u8 _cnt=0;
+	u8 i;
+	u8 sum = 0;
+	
+	data_to_send[_cnt++]=0xAA;
+	data_to_send[_cnt++]=0xAA;
+	data_to_send[_cnt++]=0x03;
+	data_to_send[_cnt++]=0;
+	data_to_send[_cnt++]=BYTE1(thr);
+	data_to_send[_cnt++]=BYTE0(thr);
+	data_to_send[_cnt++]=BYTE1(yaw);
+	data_to_send[_cnt++]=BYTE0(yaw);
+	data_to_send[_cnt++]=BYTE1(rol);
+	data_to_send[_cnt++]=BYTE0(rol);
+	data_to_send[_cnt++]=BYTE1(pit);
+	data_to_send[_cnt++]=BYTE0(pit);
+	data_to_send[_cnt++]=BYTE1(aux1);
+	data_to_send[_cnt++]=BYTE0(aux1);
+	data_to_send[_cnt++]=BYTE1(aux2);
+	data_to_send[_cnt++]=BYTE0(aux2);
+	data_to_send[_cnt++]=BYTE1(aux3);
+	data_to_send[_cnt++]=BYTE0(aux3);
+	data_to_send[_cnt++]=BYTE1(aux4);
+	data_to_send[_cnt++]=BYTE0(aux4);
+	data_to_send[_cnt++]=BYTE1(aux5);
+	data_to_send[_cnt++]=BYTE0(aux5);
+	data_to_send[_cnt++]=BYTE1(aux6);
+	data_to_send[_cnt++]=BYTE0(aux6);
 
+	data_to_send[3] = _cnt-4;
+	
+	for(i=0;i<_cnt;i++)
+		sum += data_to_send[i];
+	
+	data_to_send[_cnt++]=sum;
+	
+	ANO_DT_Send_Data(data_to_send, _cnt);
+}

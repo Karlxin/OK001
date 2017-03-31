@@ -81,8 +81,8 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
     TIM3->CCR4 = MOTO4_PWM;
 }
 
-//此函数将想要的角度映射成油门输入给油门函数
-void Moto_RPY(int16_t desthrottle)
+//此函数输入遥控油门pwm信号,内部会结合自动控制量并调用最底层油门函数
+void Moto_Throttle(int16_t desthrottle)
 {
     int16_t d1, d2, d3, d4;
     d1 = desthrottle+cNd1; //            CW3     1CCW	   / \				 
@@ -128,7 +128,7 @@ float chuli(float a)//当a小于1时，返回1，当a大于等于1时，返回1/a
 	return 1/a;
 }
 
-//此函数将角度和角速度值处理后转换为自动控制量!!!哈哈哈终于到这了！！！我好兴奋啊！！！
+//此函数将角度和角速度值处理后转换为自动控制量
 void cyberNation(void)
 {
 	kp_omega_x=KP_OMEGA_X*chuli(sfabs(roll_err));//误差越多，放弃越多的角速度锁,1/15=0.06666666666666
@@ -153,7 +153,7 @@ void cN2rpy(void)
 	yjz=-cNd1-cNd2+cNd3+cNd4;
 }
 
-#define Filter_Num 2//二值平均?
+#define Filter_Num 6//六值平均
 void Gyro_filter(void)
 {
 	static short Filter_x[Filter_Num],Filter_y[Filter_Num],Filter_z[Filter_Num];

@@ -17,7 +17,7 @@
 extern void TIM3_PWM_Init(u16 arr, u16 psc);
 extern void TIM4_Cap_Init(u16 arr, u16 psc);
 extern void TIM5_Int_Init(u16 arr, u16 psc);
-extern void Moto_RPY(int16_t desthrottle);
+extern void Moto_Throttle(int16_t desthrottle);
 extern void MS5611_init(void);
 extern void IIC_Init(void);
 
@@ -51,6 +51,10 @@ short temp;                 //温度
 short gyrox_chushi, gyroy_chushi, gyroz_chushi; //陀螺仪最开始放在地面时候的一些数据,当作初始值要减去的
 float temp_gyxc = 0, temp_gyyc = 0, temp_gyzc = 0; //用来存放陀螺仪数据，并计算出陀螺仪初始值,采用预估态与测量值平均权重平均
 short gyro_jishu=0;//滤波计数,一般到3回0,即永远不能到3
+short aacx_chushi, aacy_chushi, aacz_chushi; //加速度计最开始放在地面时候的一些数据,当作初始值要减去的
+float temp_axc = 0, temp_ayc = 0, temp_azc = 0; //用来存放加速度计数据，并计算出加速度计初始值,采用预估态与测量值平均权重平均
+
+
 
 extern void filter_threeValue(void);//用来三值滤波的函数,现在只滤波陀螺仪角速度
 
@@ -89,6 +93,7 @@ float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
 short gyrox_out,gyroy_out,gyroz_out;
 
 extern void Gyro_filter(void);
+extern void ANO_DT_Send_RCData(u16 thr,u16 yaw,u16 rol,u16 pit,u16 aux1,u16 aux2,u16 aux3,u16 aux4,u16 aux5,u16 aux6);
 
 int main(void)
 {
@@ -102,9 +107,6 @@ int main(void)
     SystemInit();//系统初始化
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//抢先等级分为0，1，2，3；子等级分为0,1(2:0)
     delay_init();//延迟初始化
-
-    //Uart1_Init(115200);//给ATKXCOMV2.0读数据时需要打开的通用异步首发串口波特率速率
-    Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
 
     TIM3_PWM_Init(19999, 71);  //50Hz
 
@@ -145,22 +147,36 @@ int main(void)
 
     //初始化陀螺仪，实质上做的事情是把最开始三秒内的陀螺仪数据作为零位记录下来
 
-    gyxt = xitongshijian; //记录程序到这时的秒钟值
+    gyxt = xitongshijian; //记录程序到这时的系统毫秒值
     while(xitongshijian * 0.001f < gyxt * 0.001f + 3) //当程序离开上一句运行三秒内
     {
-        if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))
+        if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))//读取陀螺仪原始数据
         {
-            temp_gyxc = (float)gyrox * 0.5 + temp_gyxc * 0.5;
-            temp_gyyc = (float)gyroy * 0.5 + temp_gyyc * 0.5;
-            temp_gyzc = (float)gyroz * 0.5 + temp_gyzc * 0.5;
+            temp_gyxc = ((float)gyrox  + temp_gyxc) * 0.5;
+            temp_gyyc = ((float)gyroy  + temp_gyyc) * 0.5;
+            temp_gyzc = ((float)gyroz  + temp_gyzc) * 0.5;
         }
-        //ANO_DT_Send_Senser(0, 0, 0, gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi,0,0,0,0);
+
+        if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //得到加速度传感器数据,耗时0.6ms
+        {
+            temp_axc = ((float)aacx+ temp_axc) * 0.5;
+            temp_ayc = ((float)aacy+ temp_ayc) * 0.5;
+            temp_azc = ((float)aacz+ temp_azc) * 0.5;
+        }
+
     }
     gyrox_chushi = (short)temp_gyxc;
     gyroy_chushi = (short)temp_gyyc;
     gyroz_chushi = (short)temp_gyzc;
+	
+    aacx_chushi = (short)temp_axc;
+    aacy_chushi = (short)temp_ayc;
+    aacz_chushi = (short)temp_azc;
 
-    LED_Init();//初始化结束咯
+	//Uart1_Init(115200);//给ATKXCOMV2.0读数据时需要打开的通用异步收发串口波特率速率
+    Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
+	
+    LED_Init();//初始化结束咯,耗时10s
     LED0 = 1; //灭掉红灯
     LED1 = 0; //绿灯亮着，表示解锁不可以
 
@@ -176,31 +192,34 @@ int main(void)
             if(channel3_in > 1100)//通道三接受到超过1100占空比的脉宽调制波信号
             {
                 desthrottle = channel3_in;//想要的油门等于通道三接收到的信号占空比
+				
                 if(channel1_in < 1507 - deadzone || channel1_in > 1507 + deadzone)//通道一接收信号不在工程意义中间
                 {
                     temp1 =  channel1_in-1507 ;//想要的横滚等于通道一中间差
-					desroll= (float)temp1 *0.0361446;//转换为正负15
-					
+                    desroll= (float)temp1 *0.0361446;//转换为正负15
+
                 }
                 else//通道一接收信号在工程意义中间
                 {
                     desroll = 0;//想要的横滚为零
                 }
+				
                 if(channel2_in < 1508 - deadzone || channel2_in > 1508 + deadzone)//通道二接收信号不在工程意义中间
                 {
                     temp2 = 1508 - channel2_in;//想要的俯仰等于通道二中位差
-					despitch=(float)temp2*0.0361446;//转换为正负15
-					
+                    despitch=(float)temp2*0.0361446;//转换为正负15
+
                 }
                 else//通道二接收信号在工程意义中间
                 {
                     despitch = 0;//想要的俯仰为零
                 }
+				
                 if(channel4_in < 1507 - deadzone || channel4_in > 1507 + deadzone)//通道四接收信号不在工程意义中间
                 {
                     temp4 = 1507 - channel4_in;//想要的偏航为通道四中位差
-					desyaw= (float)temp4*0.0361446;//转换为正负15
-					
+                    desyaw= (float)temp4*0.0361446;//转换为正负15
+
                 }
                 else//通道四接收信号在工程意义中间
                 {
@@ -212,9 +231,8 @@ int main(void)
                 //desthrottle = 1000;//想要的油门等于最小油门,因为(1000,2000)是接受信号值范围
                 desthrottle = 0;//等于1000太恐怖了，根本降不下油门，在发散的时候救都救不回
                 desroll = despitch = desyaw = 0;//想要的横滚俯仰偏航均为零
+                Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化,这个函数不会频繁调用，别担心耗时
             }
-
-            Moto_RPY(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数
 
             //printf("temp1=%d\r\n temp2=%d\r\n temp3=%d\r\n\r\n",(int)temp1, (int)temp2,(int)temp3);//测试四通道输出的值
             //printf("temp1=%f\r\n temp2=%f\r\n temp3=%f\r\n\r\n",temp1,temp2,temp3);//测试四通道输出的值
@@ -240,7 +258,7 @@ int main(void)
         }
         else//解锁不可以
         {
-            Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化
+            Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化,over 0.02ms
 
             if(channel3_in < 1100 && channel4_in > 1900)//油门小于1100，偏航角大于1900,也就是油门最下，偏航最右
             {
@@ -278,21 +296,17 @@ int main(void)
 
 
         //----------------------------非中断函数内部的周期性执行程序上界-----------------------------------
-
+//二毫秒函数上界
+/*		
         if(xitongshijian * 0.5f > erhaomiao + 1)
         {
             erhaomiao++;//每过二毫秒来这一次
         }
-
+*/
+//二毫秒函数下界
         if(xitongshijian * 0.2f > wuhaomiao + 1)
         {
             wuhaomiao++;//每过五毫秒来这一次
-        }
-
-        if(xitongshijian * 0.1f > shihaomiao + 1)
-        {
-            shihaomiao++;//每过十毫秒来这一次
-            mpu_dmp_get_data(&pitch, &roll, &yaw);//此句话消耗惊人的52ms,去掉50ms延迟后只需要2.1ms,这是mpu硬解姿态
 
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //得到加速度传感器数据,耗时0.6ms
             {
@@ -311,15 +325,18 @@ int main(void)
                 //gyrox_sd = (float)gyrox * 0.0610352;
                 //gyroy_sd = (float)gyroy * 0.0610352;
                 //gyroz_sd = (float)gyroz * 0.0610352;
+                Gyro_filter();//滑动窗口滤波,耗时0.02ms
+                roll_err=roll-desroll;//得到roll角度误差
+                pitch_err=pitch-despitch;//得到pitch角度误差
+                yaw_err=yaw-desyaw;//得到yaw角度误差
             }
 
-            //filter_threeValue();//三值滤波
-			
-			Gyro_filter();//滑动窗口滤波
-			roll_err=roll-desroll;//得到roll角度误差
-			pitch_err=pitch-despitch;//得到pitch角度误差
-			yaw_err=yaw-desyaw;//得到yaw角度误差
-			cyberNation();//更新电机
+        }
+
+        if(xitongshijian * 0.1f > shihaomiao + 1)
+        {
+            shihaomiao++;//每过十毫秒来这一次
+            mpu_dmp_get_data(&pitch, &roll, &yaw);//此句话消耗惊人的52ms,去掉50ms延迟后只需要2.1ms,这是mpu硬解姿态
 
             //ag2q2rpy(gyrox_sr+0.0553938, gyroy_sr-0.0170442, gyroz_sr-0.0159790, aacx-960, aacy-350, aacz+1085, &pitch, &roll, &yaw);//计算耗时0.25ms;
             //__nop();//上面三条总耗时1.4ms,每秒钟搞了101次
@@ -333,22 +350,20 @@ int main(void)
             //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi,(s16)rjz,(s16)pjz,(s16)yjz,(s32)0);
             //ANO_DT_Send_Senser((s16)gyrox_filter[6]-gyrox_chushi,(s16)gyroy_filter[6]-gyroy_chushi ,(s16)gyroz_filter[6]-gyroz_chushi , gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi,(s32)rjz,(s32)pjz,(s32)yjz,0);
             //ANO_DT_Send_Status(roll, pitch, yaw, (s32)0, (u8)0, (u8)0);
-			
-			ANO_DT_Send_Status(roll, pitch, yaw, (s32)0, (u8)0, (u8)0);
-			//ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox_out, gyroy_out, gyroz_out,(s16)0,(s16)0,(s16)0,(s32)0);
-			ANO_DT_Send_MotoPWM((u16) cNd1,(u16) cNd2,(u16) cNd3,(u16) cNd4,(u16) 0,(u16) 0,(u16) 0,(u16) 0);
-			
-			//ANO_DT_Send_Senser(gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi, gyrox_out, gyroy_out, gyroz_out,gyrox_chushi,gyroy_chushi,gyroz_chushi,(s32)0);
+
+            //ANO_DT_Send_Senser(gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi, gyrox_out, gyroy_out, gyroz_out,gyrox_chushi,gyroy_chushi,gyroz_chushi,(s32)0);
         }
         if(xitongshijian * 0.05f > ershihaomiao + 1)
         {
             ershihaomiao++;//每过二十毫秒来这一次
+            cyberNation();//更新电机,经典50Hz更新法,over 0.06ms
+            desthrottle-=(int16_t)(0.05*(float)(aacz-aacz_chushi));//当aacz大于初始时，说明飞机向上,油门应该减小
+            Moto_Throttle(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数
             //MS561101BA_GetTemperature();//获取温度,消耗20.6ms,去掉10ms延迟后还需要10ms,以及将10ms改为8ms后,只需要8ms
             //MS561101BA_getPressure();   //获取大气压,消耗20.6ms,去掉延迟后,去掉10ms延迟后还需要10ms,以及将10ms改为8ms后,只需要8ms
 
             //printf("电机在更新中");//测试在四通道捕捉的同时电机是否会更新
 
-            //尝试17注释语句上端
             /*if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz))   //得到加速度传感器数据,耗时0.58ms
             {
                 //aacx_s = (float)aacx * 0.0005978;
@@ -381,53 +396,50 @@ int main(void)
         if(xitongshijian * 0.02f > wushihaomiao + 1)
         {
             wushihaomiao++;//五十毫秒
+            ANO_DT_Send_Status(roll, pitch, yaw, (s32)0, (u8)0, (u8)0);//over 0.4ms
+            ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox_out, gyroy_out, gyroz_out,(s16)0,(s16)0,(s16)0,(s32)0);//over 0.5ms
+            ANO_DT_Send_MotoPWM((u16) cNd1,(u16) cNd2,(u16) cNd3,(u16) cNd4,(u16) 0,(u16) 0,(u16) 0,(u16) 0);//over 0.5ms
+			ANO_DT_Send_RCData(desthrottle,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0);
         }
-
+//----------------------一秒周期运行上界
+        /*
         if(xitongshijian * 0.001f > miaozhong + 1)
         {
             miaozhong++;//每过一秒来这里一次
-            //temp=MPU_Get_Temperature();
+        //            temp=MPU_Get_Temperature();
 
-            //printf("  mpu temp=%.2f\r\n", temp*0.01f);//mpu温度
-            //printf("  Temp : %.2f ℃\r\n", TEMP * 0.01f);            //串口输出原始数据，气压计读到的温度
-            //printf("  height : %.2f m\r\n", (float)MS561101BA_get_altitude());
-            //printf("  Pressure : %.2f mbar\r\n\r\n\r\n", Pressure * 0.01f); //串口输出原始数据
+        //            printf("  mpu temp=%.2f\r\n", temp*0.01f);//mpu温度
+        //            printf("  Temp : %.2f ℃\r\n", TEMP * 0.01f);            //串口输出原始数据，气压计读到的温度
+        //            printf("  height : %.2f m\r\n", (float)MS561101BA_get_altitude());
+        //            printf("  Pressure : %.2f mbar\r\n\r\n\r\n", Pressure * 0.01f); //串口输出原始数据
 
+        //            printf("  aacx=%f\r\n", aacx_s);//x轴加速度,printf可以输出给ATKCOM串口捕捉并在PC上显示
+        //            printf("  aacy=%f\r\n", aacy_s);
+        //            printf("  aacz=%f\r\n\r\n", aacz_s);
 
+        //            printf("  gyrox=%f\r\n", gyrox_sd);
+        //            printf("  gyroy=%f\r\n", gyroy_sd);
+        //            printf("  gyroz=%f\r\n\r\n", gyroz_sd);
+        //
+        //            printf("    roll=%f 度\r\n", roll); //用软解姿态不需要转换
+        //            printf("  pitch=%f 度\r\n", pitch);
+        //            printf("  yaw=%f 度\r\n\r\n", yaw);
 
+        //            printf("  aacx=%d\r\n", aacx);//x轴加速度
+        //            printf("  aacy=%d\r\n", aacy);
+        //            printf("  aacz=%d\r\n\r\n", aacz);
 
-            //printf("  aacx=%f\r\n", aacx_s);//x轴加速度,printf可以输出给ATKCOM串口捕捉并在PC上显示
-            //printf("  aacy=%f\r\n", aacy_s);
-            //printf("  aacz=%f\r\n\r\n", aacz_s);
+        //            printf("  gyrox=%d\r\n", gyrox);
+        //            printf("  gyroy=%d\r\n", gyroy);
+        //            printf("  gyroz=%d\r\n\r\n", gyroz);
 
-            //printf("  gyrox=%f\r\n", gyrox_sd);
-            //printf("  gyroy=%f\r\n", gyroy_sd);
-            //printf("  gyroz=%f\r\n\r\n", gyroz_sd);
-
-
-
-
-
-
-//          printf("    roll=%f 度\r\n", roll); //用软解姿态不需要转换
-//            printf("  pitch=%f 度\r\n", pitch);
-//            printf("  yaw=%f 度\r\n\r\n", yaw);
-//
-//            printf("  aacx=%d\r\n", aacx);//x轴加速度
-//            printf("  aacy=%d\r\n", aacy);
-//            printf("  aacz=%d\r\n\r\n", aacz);
-
-//            printf("  gyrox=%d\r\n", gyrox);
-//            printf("  gyroy=%d\r\n", gyroy);
-//            printf("  gyroz=%d\r\n\r\n", gyroz);
-
-//            printf("  delta_gyrox=%d\r\n", gyrox - gyrox_chushi);
-//            printf("  delta_gyroy=%d\r\n", gyroy - gyroy_chushi);
-//            printf("  delta_gyroz=%d\r\n\r\n", gyroz - gyroz_chushi);
-
+        //            printf("  delta_gyrox=%d\r\n", gyrox - gyrox_chushi);
+        //            printf("  delta_gyroy=%d\r\n", gyroy - gyroy_chushi);
+        //            printf("  delta_gyroz=%d\r\n\r\n", gyroz - gyroz_chushi);
 
         }
-
+        */
+//---------------------------一秒周期运行下界
         //----------------------------非中断函数内部的周期性执行程序下界-----------------------------------
 
     }
