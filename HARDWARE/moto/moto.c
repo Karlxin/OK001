@@ -43,9 +43,9 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //65536/2*0.004=131.072
 //10000*0.04=400
 float KP_THETA_X = 4.0, KP_THETA_Y = 4.0, KP_THETA_Z = 0;//常量
-float KP_OMEGA_X = 0.04, KP_OMEGA_Y = 0.04, KP_OMEGA_Z = 0.02;//常量
+float KP_OMEGA_X = 0.06, KP_OMEGA_Y = 0.06, KP_OMEGA_Z = 0.03;//常量
 float kp_theta_x = 4.0, kp_theta_y = 4.0, kp_theta_z = 0;//变量
-float kp_omega_x = 0.04, kp_omega_y = 0.04, kp_omega_z = 0.02;//变量
+float kp_omega_x = 0.06, kp_omega_y = 0.06, kp_omega_z = 0.03;//变量
 //PD控制器调试下端
 
 extern float rjz,pjz,yjz;//将cNd1等数据分别转换为roll,pitch,yaw方向的纠正量，以便示波观察
@@ -131,8 +131,8 @@ float chuli(float a)//当a小于1时，返回1，当a大于等于1时，返回1/a
 //此函数将角度和角速度值处理后转换为自动控制量,此些量会传递给核心二使用.核心三
 void cyberNation(void)
 {
-	kp_omega_x=KP_OMEGA_X*chuli(sfabs(roll_err));//误差越多，放弃越多的角速度锁,1/15=0.06666666666666
-	kp_omega_y=KP_OMEGA_Y*chuli(sfabs(pitch_err));
+	//kp_omega_x=KP_OMEGA_X*chuli(sfabs(roll_err));//误差越多，放弃越多的角速度锁,1/15=0.06666666666666
+	//kp_omega_y=KP_OMEGA_Y*chuli(sfabs(pitch_err));
 	
 	cNd1 = +roll_err * kp_theta_x + pitch_err * kp_theta_y + yaw_err * kp_theta_z + gyrox_out * kp_omega_x + gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
     cNd2 = -roll_err * kp_theta_x - pitch_err * kp_theta_y + yaw_err * kp_theta_z - gyrox_out * kp_omega_x - gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
