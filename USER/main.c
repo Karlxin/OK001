@@ -174,7 +174,7 @@ int main(void)
     aacz_chushi = (short)temp_azc;
 
 	//Uart1_Init(115200);//给ATKXCOMV2.0读数据时需要打开的通用异步收发串口波特率速率
-    Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
+    //Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
 	
     LED_Init();//初始化结束咯,耗时10s
     LED0 = 1; //灭掉红灯
@@ -231,7 +231,7 @@ int main(void)
                 //desthrottle = 1000;//想要的油门等于最小油门,因为(1000,2000)是接受信号值范围
                 desthrottle = 0;//等于1000太恐怖了，根本降不下油门，在发散的时候救都救不回
                 desroll = despitch = desyaw = 0;//想要的横滚俯仰偏航均为零
-                Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化,这个函数不会频繁调用，别担心耗时
+                Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化,这个函数不会频繁调用，别担心耗时.核心一调用一
             }
 
             //printf("temp1=%d\r\n temp2=%d\r\n temp3=%d\r\n\r\n",(int)temp1, (int)temp2,(int)temp3);//测试四通道输出的值
@@ -258,7 +258,9 @@ int main(void)
         }
         else//解锁不可以
         {
-            Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化,over 0.02ms
+			desthrottle = 0;//等于1000太恐怖了，根本降不下油门，在发散的时候救都救不回
+            desroll = despitch = desyaw = 0;//想要的横滚俯仰偏航均为零
+            Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化,over 0.02ms,核心一调用二
 
             if(channel3_in < 1100 && channel4_in > 1900)//油门小于1100，偏航角大于1900,也就是油门最下，偏航最右
             {
@@ -357,8 +359,9 @@ int main(void)
         {
             ershihaomiao++;//每过二十毫秒来这一次
             cyberNation();//更新电机,经典50Hz更新法,over 0.06ms
-            desthrottle-=(int16_t)(0.05*(float)(aacz-aacz_chushi));//当aacz大于初始时，说明飞机向上,油门应该减小
-            Moto_Throttle(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数
+            //desthrottle-=(int16_t)(0.05*(float)(aacz-aacz_chushi));//当aacz大于初始时，说明飞机向上,油门应该减小
+            Moto_Throttle(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数.核心二调用一
+			//printf("  desthrottle =%d\r\n", desthrottle);
             //MS561101BA_GetTemperature();//获取温度,消耗20.6ms,去掉10ms延迟后还需要10ms,以及将10ms改为8ms后,只需要8ms
             //MS561101BA_getPressure();   //获取大气压,消耗20.6ms,去掉延迟后,去掉10ms延迟后还需要10ms,以及将10ms改为8ms后,只需要8ms
 
@@ -390,19 +393,29 @@ int main(void)
             //ANO_DT_Send_Status(roll, pitch, yaw, (s32)0, (u8)0, (u8)0);//耗时0.37ms
             //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox, gyroy, gyroz);
             //__nop();*/
-            //尝试17注释语句下端
+            
         }
-
+		
+		
+		
+//----------------五十毫秒上界
+/*
         if(xitongshijian * 0.02f > wushihaomiao + 1)
         {
             wushihaomiao++;//五十毫秒
-            ANO_DT_Send_Status(roll, pitch, yaw, (s32)0, (u8)0, (u8)0);//over 0.4ms
-            ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox_out, gyroy_out, gyroz_out,(s16)0,(s16)0,(s16)0,(s32)0);//over 0.5ms
-            ANO_DT_Send_MotoPWM((u16) cNd1,(u16) cNd2,(u16) cNd3,(u16) cNd4,(u16) 0,(u16) 0,(u16) 0,(u16) 0);//over 0.5ms
-			ANO_DT_Send_RCData(desthrottle,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0);
+            //ANO_DT_Send_Status(roll, pitch, yaw, (s32)desthrottle, (u8)0, (u8)0);//over 0.4ms
+            //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox_out, gyroy_out, gyroz_out,(s16)desthrottle,(s16)0,(s16)0,(s32)0);//over 0.5ms
+            //ANO_DT_Send_MotoPWM((u16) cNd1,(u16) cNd2,(u16) cNd3,(u16) cNd4,(u16) 0,(u16) 0,(u16) 0,(u16) 0);//over 0.5ms
+			//ANO_DT_Send_RCData((u16)channel3_in,(u16) channel4_in,(u16) channel1_in,(u16) channel2_in,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0);
+			
         }
+*/
+//---------------五十毫秒下界
+		
+		
+		
 //----------------------一秒周期运行上界
-        /*
+        
         if(xitongshijian * 0.001f > miaozhong + 1)
         {
             miaozhong++;//每过一秒来这里一次
@@ -438,7 +451,7 @@ int main(void)
         //            printf("  delta_gyroz=%d\r\n\r\n", gyroz - gyroz_chushi);
 
         }
-        */
+        
 //---------------------------一秒周期运行下界
         //----------------------------非中断函数内部的周期性执行程序下界-----------------------------------
 

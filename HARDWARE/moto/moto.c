@@ -62,7 +62,7 @@ extern float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
 
 extern short gyrox_out,gyroy_out,gyroz_out;
 
-//此函数直接控制电机
+//此函数直接控制电机.核心一
 void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int16_t MOTO4_PWM)
 {
 
@@ -81,7 +81,7 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
     TIM3->CCR4 = MOTO4_PWM;
 }
 
-//此函数输入遥控油门pwm信号,内部会结合自动控制量并调用最底层油门函数
+//此函数输入遥控油门pwm信号,内部会结合自动控制量并调用最底层油门函数.核心二
 void Moto_Throttle(int16_t desthrottle)
 {
     int16_t d1, d2, d3, d4;
@@ -90,7 +90,7 @@ void Moto_Throttle(int16_t desthrottle)
     d3 = desthrottle+cNd3; //                 *             |                <=======
     d4 = desthrottle+cNd4; //      	     CCW2    4CW        |
 
-    Moto_PwmRflash(d1, d2, d3, d4);//此函数是最终改变油门的函数
+    Moto_PwmRflash(d1, d2, d3, d4);//此函数是最终改变油门的函数,核心一调用三
 }
 
 //没有这个限制函数简直要爆炸哦,暂时限制到300吧
@@ -128,7 +128,7 @@ float chuli(float a)//当a小于1时，返回1，当a大于等于1时，返回1/a
 	return 1/a;
 }
 
-//此函数将角度和角速度值处理后转换为自动控制量
+//此函数将角度和角速度值处理后转换为自动控制量,此些量会传递给核心二使用.核心三
 void cyberNation(void)
 {
 	kp_omega_x=KP_OMEGA_X*chuli(sfabs(roll_err));//误差越多，放弃越多的角速度锁,1/15=0.06666666666666
