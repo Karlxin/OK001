@@ -42,10 +42,10 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //角速度暂时没有估计,暂时估计在10000以内
 //65536/2*0.004=131.072
 //10000*0.04=400
-float KP_THETA_X = 4.0, KP_THETA_Y = 4.0, KP_THETA_Z = 0;//常量
-float KP_OMEGA_X = 0.06, KP_OMEGA_Y = 0.06, KP_OMEGA_Z = 0.03;//常量
-float kp_theta_x = 4.0, kp_theta_y = 4.0, kp_theta_z = 0;//变量
-float kp_omega_x = 0.06, kp_omega_y = 0.06, kp_omega_z = 0.03;//变量
+float KP_THETA_X = 4.0, KP_THETA_Y = 4.0, KP_THETA_Z = 4.0;//常量
+float KP_OMEGA_X = 0.05, KP_OMEGA_Y = 0.05, KP_OMEGA_Z = 0;//常量
+float kp_theta_x = 4.0, kp_theta_y = 4.0, kp_theta_z = 4.0;//变量
+float kp_omega_x = 0.05, kp_omega_y = 0.05, kp_omega_z = 0;//变量
 //PD控制器调试下端
 
 extern float rjz,pjz,yjz;//将cNd1等数据分别转换为roll,pitch,yaw方向的纠正量，以便示波观察
