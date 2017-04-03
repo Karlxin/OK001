@@ -23,6 +23,8 @@ extern float roll, pitch, yaw; 		//欧拉角,DMP硬解得到的角度,roll -180~180 pitch 
 extern short gyrox, gyroy, gyroz;	//陀螺仪原始数据-32768~32767
 extern short gyrox_chushi,gyroy_chushi,gyroz_chushi;//陀螺仪最开始放在地面时候的一些数据
 
+extern float ACC_IIR_FACTOR;
+
 //roll:-180~180 pitch:-90:90 yaw:-180:180
 //omegaroll:omegapitch:omegayaw:-32768:32767
 
@@ -40,18 +42,16 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //各种调试，PD控制器
 //角度预估在15度以内,故让角度控制的油门为15*4=60
 //角速度暂时没有估计,暂时估计在10000以内
-//32767*0.004=131.072
-//10000*0.05=500
+//32767*0.03=900
+//10000*0.03=300
+//角速度转换为角度再输入进来，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
 float KP_THETA_X = 3, KP_THETA_Y = 3, KP_THETA_Z = 3;//常量
-float KP_OMEGA_X = 0.05, KP_OMEGA_Y = 0.05, KP_OMEGA_Z = 0.025;//常量
+float KP_OMEGA_X = 0.7*0.0610370, KP_OMEGA_Y = 0.6*0.0610370, KP_OMEGA_Z = 0.7*0.0610370;//常量
 float kp_theta_x = 3, kp_theta_y = 3, kp_theta_z = 3;//变量
-float kp_omega_x = 0.05, kp_omega_y = 0.05, kp_omega_z = 0.025;//变量
+float kp_omega_x = 0.7*0.0610370, kp_omega_y = 0.6*0.0610370, kp_omega_z = 0.7*0.0610370;//变量
 //PD控制器调试下端
 
 extern float rjz,pjz,yjz;//将cNd1等数据分别转换为roll,pitch,yaw方向的纠正量，以便示波观察
-
-extern float gyrox_filter[7],gyroy_filter[7],gyroz_filter[7];//用来存放陀螺仪角速度的三值滤波器暂存数据,第四位用来存放陀螺仪三值滤波的返回值，即经过滤波后的值
-extern short gyro_jishu;//滤波计数,一般到3回0,即永远不能到3
 
 extern u8 roll_in_flag;//绕X轴有有效遥控信号输入则为1，否则为0
 extern u8 pitch_in_flag;
@@ -61,6 +61,8 @@ extern float roll_err, pitch_err, yaw_err;//误差值,roll_err=roll-desroll,其中des
 extern float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
 
 extern short gyrox_out,gyroy_out,gyroz_out;
+extern short aacx, aacy, aacz;     //加速度传感器原始数据
+extern short accz_out;
 
 //此函数直接控制电机.核心一
 void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int16_t MOTO4_PWM)
@@ -153,7 +155,7 @@ void cN2rpy(void)
 	yjz=-cNd1-cNd2+cNd3+cNd4;
 }
 
-#define Filter_Num 6//六值平均
+#define Filter_Num 6//六值平均，陀螺仪原始数据滑动窗口滤波
 void Gyro_filter(void)
 {
 	static short Filter_x[Filter_Num],Filter_y[Filter_Num],Filter_z[Filter_Num];
@@ -182,6 +184,58 @@ void Gyro_filter(void)
 	{
 		Filter_count=0;
 	}
+}
+
+#define Filter_Num2 6//六值平均,加速度计Z轴滑动窗口滤波
+void Accz_filter(void)
+{
+	static short Filter_accz[Filter_Num2];
+	static uint8_t Filter_count2;
+	int32_t Filter_sum_accz=0;
+	uint8_t i;
+	
+	Filter_accz[Filter_count2]=aacz;
+	
+	for(i=0;i<Filter_Num;i++)
+	{
+		Filter_sum_accz+=Filter_accz[i];
+	}
+	
+	accz_out=Filter_sum_accz/Filter_Num;
+	
+	Filter_count2++;
+	
+	if(Filter_count2==Filter_Num2)
+	{
+		Filter_count2=0;
+	}
+}
+
+/******************************************************************************
+函数原型：	void Calculate_FilteringCoefficient(float Time, float Cut_Off)
+功    能：	iir低通滤波参数计算
+*******************************************************************************/ 
+void Calculate_FilteringCoefficient(float Time, float Cut_Off)
+{
+	ACC_IIR_FACTOR = Time /( Time + 1/(2.0f*3.1415927*Cut_Off) );
+}
+
+/******************************************************************************
+函数原型：	void ACC_IIR_Filter(struct _acc *Acc_in,struct _acc *Acc_out)
+功    能：	iir低通滤波
+*******************************************************************************/ 
+void ACC_IIR_Filter(void)
+{
+	accz_out = accz_out + ACC_IIR_FACTOR*(aacz - accz_out); 
+}
+
+int16_t Throttle_constrain(int16_t Throttle)
+{
+	if(Throttle>1780)
+	{
+		return 1780;
+	}
+	return Throttle;
 }
 
 
