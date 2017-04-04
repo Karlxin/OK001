@@ -7,8 +7,8 @@
 #define SCPressure  		 0x03	    //开始气压转换
 #define SCPressureing    0x04	  //正在转换气压
 
-double OFF_;
-float Aux;
+extern int64_t OFF_;
+extern float MS5611_Pressure;
 
 /*
 C1 压力灵敏度 SENS|T1
@@ -18,77 +18,33 @@ C4	温度系数的压力补偿 TCO
 C5	参考温度 T|REF
 C6 	温度系数的温度 TEMPSENS
 */
-uint16_t  Cal_C[7];	        //用于存放PROM中的6组数据1-6
+extern uint16_t  Cal_C[7];	        //用于存放PROM中的6组数据1-6
 
-uint32_t D1_Pres, D2_Temp;	// 数字压力值,数字温度值
+extern uint32_t D1_Pres, D2_Temp;	// 数字压力值,数字温度值
 
 /*
 dT 实际和参考温度之间的差异
 TEMP 实际温度
 */
-int32_t dT, TEMP;
+extern int32_t dT, TEMP;
 /*
 OFF 实际温度补偿
 SENS 实际温度灵敏度
 */
-int64_t OFF, SENS;
+extern int64_t OFF, SENS;
 
-int32_t P;//单位0.01mbar
+extern int32_t P;//单位0.01mbar
 
-uint32_t Pressure, Pressure_old, qqp;				//大气压//单位0.01mbar
+extern int64_t T2, TEMP2;	//温度校验值
+extern int64_t OFF2, SENS2;
 
-int32_t T2,TEMP2;	//温度校验值
-int64_t OFF2,SENS2;
+extern uint32_t Pres_BUFFER[20];     //数据组
+extern uint32_t Temp_BUFFER[10];     //数据组
 
-uint32_t Pres_BUFFER[20];     //数据组
-uint32_t Temp_BUFFER[10];     //数据组
+extern float scaling;
+extern float temp_jisuan ;
 
-
-//1 axis sliding windows filter
-#undef FILTER_WINDOWS
-#define  FILTER_WINDOWS    8
-
-#define PA_OFFSET_INIT_NUM 50
-static float Alt_offset_Pa = 0; //存放着0米离起飞所在平面时对应的气压值，这个值存放上电时的气压值
-double paOffsetNum = 0;
-uint16_t  paInitCnt = 0;
-uint8_t paOffsetInited = 0;
-static float Alt_Offset_m = 0;
-
-static float sliding_windows_filter(float in)
-{
-    static float buf[FILTER_WINDOWS];
-    static int buf_pointer = 0;
-    int weight = FILTER_WINDOWS;
-    int count = FILTER_WINDOWS;
-    int index = buf_pointer;
-    int total_weight = 0;
-    float integral = {0};
-
-    //add the newest date to the buffer
-    buf[index] = in;
-
-    //filter
-    while(count--)
-    {
-        integral += buf[index] * weight;
-
-        total_weight += weight; //the newest data have the most significant weight
-        weight--;
-
-        index++;
-        if(index >= FILTER_WINDOWS)
-            index = 0;
-    }
-    buf_pointer ++;
-    if(buf_pointer >= FILTER_WINDOWS)
-        buf_pointer = 0;
-
-    //update the newest date
-    return (integral / total_weight);
-}
-
-
+extern float MS5611_Altitude;
 
 /*******************************************************************************
   * @函数名称	MS561101BA_RESET
@@ -124,10 +80,10 @@ u8 MS5611_init(void)
         IIC_Start();
         IIC_Send_Byte(0xEE);
         IIC_Wait_Ack();
-		
+
         IIC_Send_Byte(0xA0 + (i * 2));
         IIC_Wait_Ack();
-		
+
         IIC_Stop();
         delay_us(5);
         IIC_Start();
@@ -138,6 +94,9 @@ u8 MS5611_init(void)
         delay_us(1);
         intl = IIC_Read_Byte(0); 			//最后一个字节NACK
         IIC_Stop();
+
+        delay_ms(5);
+
         Cal_C[i] = (((uint16_t)inth << 8) | intl);
     }
     return !Cal_C[0];
@@ -161,7 +120,9 @@ unsigned long MS561101BA_getConversion(uint8_t command)
     IIC_Wait_Ack();
     IIC_Stop();
 
-    delay_ms(8);
+    delay_ms(9);
+    delay_us(100);
+
     IIC_Start();
     IIC_Send_Byte(0xEE); 		//写地址
     IIC_Wait_Ack();
@@ -192,9 +153,10 @@ void MS561101BA_GetTemperature(void)
 {
 
     D2_Temp = MS561101BA_getConversion(0x58);
-    //delay_ms(10);
+    delay_us(5);
+
     dT = D2_Temp - (((uint32_t)Cal_C[5]) << 8);
-    TEMP = 2000 + dT * ((uint32_t)Cal_C[6]) / 8388608;
+    TEMP = 2000 + (dT * (uint32_t)Cal_C[6] >> 23) ;
 }
 
 ///***********************************************
@@ -202,61 +164,116 @@ void MS561101BA_GetTemperature(void)
 //  * @param  None
 //  * @retval None
 //************************************************/
-volatile float MS5611_Pressure;
+
 
 void MS561101BA_getPressure(void)
 {
     D1_Pres = MS561101BA_getConversion(0x48);
-    //delay_ms(10);
+    delay_us(5);
 
-    OFF_ = (uint32_t)Cal_C[2] * 65536 + ((uint32_t)Cal_C[4] * dT) / 128;
-    SENS = (uint32_t)Cal_C[1] * 32768 + ((uint32_t)Cal_C[3] * dT) / 256;
+    OFF_ = ((uint32_t)Cal_C[2] << 16) + (((uint32_t)Cal_C[4] * dT) >> 7);
+    SENS = ((uint32_t)Cal_C[1] << 15) + (((uint32_t)Cal_C[3] * dT) >> 8);
+    P = ((D1_Pres * SENS >> 21) - OFF_) >> 15;
 
     if(TEMP < 2000)
     {
-        //Aux = (2000-TEMP)*(2000-TEMP);
-        T2 = (dT * dT) / 0x80000000;
-        Aux = TEMP * TEMP;
-        OFF2 = 2.5f * Aux;
-        SENS2 = 1.25f * Aux;
+        T2 = (dT * dT) >> 31;
+        OFF2 = 5 * (((TEMP - 2000) * (TEMP - 2000)) >> 1);
+        SENS2 = 5 * (((TEMP - 2000) * (TEMP - 2000)) >> 2);
 
-        TEMP = TEMP - TEMP2;
-        OFF_ = OFF_ - OFF2;
-        SENS = SENS - SENS2;
-    }
-
-    Pressure = (D1_Pres * SENS / 2097152 - OFF_) / 32768;
-    MS5611_Pressure = Pressure;
-}
-
-float MS561101BA_get_altitude(void)
-{
-    static float Altitude, AltPre;
-    float dz, dt;
-    uint32_t current = 0;
-    static uint32_t tp = 0;
-
-    if(Alt_offset_Pa == 0)
-    {
-        if(paInitCnt > PA_OFFSET_INIT_NUM)
+        if(TEMP < -1500)
         {
-            Alt_offset_Pa = paOffsetNum / paInitCnt;
-            paOffsetInited = 1;
+            OFF2 = OFF2 + 7 * (TEMP + 1500) * (TEMP + 1500);
+            SENS2 = SENS2 + 11 * (((TEMP + 1500) * (TEMP + 1500)) >> 1);
         }
-        else
-            paOffsetNum += MS5611_Pressure;
-
-        paInitCnt++;
-
-        Altitude = 0; //高度为0
-
-        return Altitude;
     }
-    //计算相对上电的位置的高度,单位m
-    Altitude = 4433000.0f * (1.f - pow((MS5611_Pressure / Alt_offset_Pa), 0.1903f)) * 0.01f;
-    //Altitude = Altitude - Alt_Offset_m ;
-	//Altitude = sliding_windows_filter(Altitude);
+    else
+    {
+        T2 = 0;
+        OFF2 = 0;
+        SENS2 = 0;
+    }
 
-    return Altitude;
+    TEMP = TEMP - T2;
+    OFF_ = OFF_ - OFF2;
+    SENS = SENS - SENS2;
+
+    MS5611_Pressure =  ((D1_Pres * SENS >> 21) - OFF_) >> 15;
 }
+
+void MS561101BA_get_altitude(void)
+{
+    MS5611_Altitude = 153.8462f * temp_jisuan * (1.0f - expf(0.190259f * logf(scaling)));
+}
+
+extern float Altitude_dt;
+extern float Altitude_R;
+extern float Altitude_Q;
+extern float Altitude_K;//kalman gain
+extern float Altitude_X_hat;//init predict
+extern float Altitude_X_hat_minus;//previous
+extern float Altitude_P;//error variance
+
+
+void Kalman_filter_alt(void)//Altitude Kalman filter
+{
+    //time update
+    Altitude_X_hat_minus = Altitude_X_hat;
+    Altitude_P = Altitude_P + Altitude_Q;
+
+    //predict update
+    Altitude_K = Altitude_P / (Altitude_P + Altitude_R);
+    Altitude_X_hat = Altitude_X_hat_minus + Altitude_K * (MS5611_Altitude - Altitude_X_hat_minus);
+    Altitude_P = (1 - Altitude_K) * Altitude_P;
+}
+
+
+extern float Climb_R;
+extern float Climb_Q;
+extern float Climb_K;//kalman gain
+extern float Climb_X_hat;//init predict
+extern float Climb_X_hat_minus;//previous predict
+extern float Climb_P;//error variance
+
+extern float Altitude_minus;
+
+void Kalman_filter_climb(void)
+{
+    //time update
+    Climb_X_hat_minus = Climb_X_hat;
+    Climb_P = Climb_P + Climb_Q;
+
+    //predict update
+    Climb_K = Climb_P / (Climb_P + Climb_R);
+    Climb_X_hat = Climb_X_hat_minus + Climb_K * ((MS5611_Altitude - Altitude_minus) / Altitude_dt - Climb_X_hat_minus);
+    Climb_P = (1 - Climb_K) * Climb_P;
+}
+
+
+
+
+
+extern float pressure_R;
+extern float pressure_Q;
+extern float pressure_K;
+extern float pressure_X_hat;
+extern float pressure_X_hat_minus;
+extern float pressure_P;
+
+void Kalman_filter_pressure(void)
+{
+    //time update
+    pressure_X_hat_minus = pressure_X_hat;
+    pressure_P = pressure_P + pressure_Q;
+
+    //predict update
+    pressure_K = pressure_P / (pressure_P + pressure_R);
+    pressure_X_hat = pressure_X_hat_minus + pressure_K * (MS5611_Pressure - pressure_X_hat_minus);
+    pressure_P = (1 - pressure_K) * pressure_P;
+}
+
+
+
+
+
 

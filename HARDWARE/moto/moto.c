@@ -64,6 +64,32 @@ extern short gyrox_out,gyroy_out,gyroz_out;
 extern short aacx, aacy, aacz;     //加速度传感器原始数据
 extern short accz_out;
 
+int16_t Constrain_up(int16_t throttle,int16_t max)
+{
+	if(throttle>max)
+	{
+		return max;
+	}
+	return throttle;
+}
+
+int16_t Constrain(int16_t throttle,int16_t max,int16_t min)
+{
+	if((min<throttle)&&(throttle<max))
+	{
+		return throttle;
+	}
+	else
+	{
+		if(max<=throttle)
+		{
+			return max;
+		}
+	}
+	return min;
+}
+
+
 //此函数直接控制电机.核心一
 void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int16_t MOTO4_PWM)
 {
@@ -87,10 +113,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
     int16_t d1, d2, d3, d4;
-    d1 = desthrottle+cNd1; //            CW3     1CCW	   / \				 
-    d2 = desthrottle+cNd2; //  俯视图        * *          / | \ X轴      	  Y轴
-    d3 = desthrottle+cNd3; //                 *             |                <=======
-    d4 = desthrottle+cNd4; //      	     CCW2    4CW        |
+    d1 = Constrain_up(desthrottle,1780)+cNd1; //            CW3     1CCW	   / \				 
+    d2 = Constrain_up(desthrottle,1780)+cNd2; //  俯视图        * *          / | \ X轴      	  Y轴
+    d3 = Constrain_up(desthrottle,1780)+cNd3; //                 *             |                <=======
+    d4 = Constrain_up(desthrottle,1780)+cNd4; //      	     CCW2    4CW        |
 
     Moto_PwmRflash(d1, d2, d3, d4);//此函数是最终改变油门的函数,核心一调用三
 }
@@ -229,13 +255,25 @@ void ACC_IIR_Filter(void)
 	accz_out = accz_out + ACC_IIR_FACTOR*(aacz - accz_out); 
 }
 
-int16_t Throttle_constrain(int16_t Throttle)
+extern float acc_Climb_R;
+extern float acc_Climb_Q;
+extern float acc_Climb_K;
+extern float acc_Climb_X_hat;
+extern float acc_Climb_X_hat_minus;
+extern float acc_Climb_P;
+
+void acc_Climb_update(void)
 {
-	if(Throttle>1780)
-	{
-		return 1780;
-	}
-	return Throttle;
+	//time update
+	acc_Climb_X_hat_minus=acc_Climb_X_hat;
+    acc_Climb_P=acc_Climb_P+acc_Climb_Q;
+	
+	//predict update
+	acc_Climb_K=acc_Climb_P/(acc_Climb_P+acc_Climb_R);
+	acc_Climb_X_hat=acc_Climb_X_hat_minus+acc_Climb_K*(aacz-acc_Climb_X_hat_minus);
+	acc_Climb_P=(1-acc_Climb_K)*acc_Climb_P;
 }
+
+
 
 

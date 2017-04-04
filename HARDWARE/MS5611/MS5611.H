@@ -28,21 +28,12 @@
 #define FILTER_num 20
 
 u8  MS5611_init(void);
-float Get_High(void);
-void Filter_Hight(unsigned int set_hight);
-void Hight_PwmOut(void);
 void MS561101BA_getPressure(void);
 void MS561101BA_getTemperature(void);
 void MS561101BA_RESET(void);
 
-
-
 unsigned long MS561101BA_getConversion(uint8_t command);
 void MS561101BA_GetTemperature(void);
-
-extern int32_t dT,TEMP;
-extern uint32_t Pressure;
-extern uint16_t  Cal_C[7];
 
 #endif
 

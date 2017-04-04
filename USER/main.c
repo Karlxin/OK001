@@ -42,6 +42,7 @@ u32 wuhaomiao = 0;//五毫秒
 u32 shihaomiao = 0; //系统运行时间，以十毫秒计,最多计119304+小时
 u32 ershihaomiao = 0; //系统运行时间,以二十毫秒,最多计59652+小时
 u32 wushihaomiao = 0;
+u32 yibaihaomiao = 0;
 u32 miaozhong = 0; //系统运行时间，以秒计,最多计1193000+小时
 
 float roll, pitch, yaw;         //欧拉角,DMP硬解得到的角度,roll -180~180 pitch -90~90 yaw -180~180
@@ -52,8 +53,6 @@ short gyrox_chushi, gyroy_chushi, gyroz_chushi; //陀螺仪最开始放在地面时候的一些
 float temp_gyxc = 0, temp_gyyc = 0, temp_gyzc = 0; //用来存放陀螺仪数据，并计算出陀螺仪初始值,采用预估态与测量值平均权重平均
 short aacx_chushi, aacy_chushi, aacz_chushi; //加速度计最开始放在地面时候的一些数据,当作初始值要减去的
 float temp_axc = 0, temp_ayc = 0, temp_azc = 0; //用来存放加速度计数据，并计算出加速度计初始值,采用预估态与测量值平均权重平均
-
-
 
 extern void filter_threeValue(void);//用来三值滤波的函数,现在只滤波陀螺仪角速度
 
@@ -78,13 +77,18 @@ u32 ershihaomiao2 = 0; //存放非计时器中断处理函数内自增的二十毫秒值
 u32 wushihaomiao2 = 0;//存放非计时器中断处理函数内自增的五十毫秒值
 u32 miaozhong2 = 0; //用来存放非计时器中断处理函数内自增的系统秒钟值
 
-extern int32_t  TEMP;                   //气压计温度
-extern float MS561101BA_get_altitude(void);//获得高度，其实是计算出高度
-extern uint32_t Pressure;               //大气压//单位0.01mbar
-extern int32_t  TEMP;                   //气压计温度
+extern void MS561101BA_get_altitude(void);//获得高度，其实是计算出高度
+
+float MS5611_Altitude;//using MS5611 pressure and temperature to calculate the Altitude.
 
 extern void MS561101BA_getPressure(void);
 extern void MS561101BA_GetTemperature(void);
+float MS5611_Pressure;
+int32_t  TEMP;                   //气压计温度
+float Pressure_chushi;
+int32_t TEMP_chushi;
+float temp_Pressure = 0;
+float temp_TEMP = 0;
 
 float roll_err, pitch_err, yaw_err;//误差值,roll_err=roll-desroll,其中desroll为遥控信号线性映射的角度值
 float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
@@ -100,6 +104,112 @@ float ACC_IIR_FACTOR;
 extern void Calculate_FilteringCoefficient(float Time, float Cut_Off);
 extern void ACC_IIR_Filter(void);
 extern int16_t Throttle_constrain(int16_t Throttle);
+
+
+//-----------气压计传感器用到的上界
+
+int64_t OFF_;
+
+
+/*
+C1 压力灵敏度 SENS|T1
+C2  压力补偿  OFF|T1
+C3  温度压力灵敏度系数 TCS
+C4  温度系数的压力补偿 TCO
+C5  参考温度 T|REF
+C6  温度系数的温度 TEMPSENS
+*/
+uint16_t  Cal_C[7];         //用于存放PROM中的6组数据1-6
+
+uint32_t D1_Pres, D2_Temp;  // 数字压力值,数字温度值
+
+/*
+dT 实际和参考温度之间的差异
+TEMP 实际温度
+*/
+int32_t dT, TEMP;
+/*
+OFF 实际温度补偿
+SENS 实际温度灵敏度
+*/
+int64_t OFF, SENS;
+
+int32_t P;//单位0.01mbar
+
+uint32_t Pressure, Pressure_old, qqp;               //大气压//单位0.01mbar
+
+int64_t T2, TEMP2;  //温度校验值
+int64_t OFF2, SENS2;
+
+uint32_t Pres_BUFFER[20];     //数据组
+uint32_t Temp_BUFFER[10];     //数据组
+
+//-----------气压计传感器用到的下界
+
+float scaling;
+float temp_jisuan;
+
+float temp_Altitude = 0;
+float Altitude_chushi;
+
+
+//---Alt karlman top
+extern void Kalman_filter_alt(void);
+float Altitude_minus=0;
+float Altitude_dt = 0.1; //the delta time
+u32 Altitude_temp_time = 0; //record the time
+float Altitude_R = 0.07; //3sigma 0.07*3=0.21,measuring variance.
+float Altitude_Q = 0.0004; //process variance
+float Altitude_K = 0; //kalman gain
+float Altitude_X_hat = 0; //init predict
+float Altitude_X_hat_minus = 0; //previous predict
+float Altitude_P = 1; //error variance
+//---Alt karlman bottom
+
+//---Climb Karlman top
+extern void Kalman_filter_climb(void);
+float Climb_R = 0.03; //3sigma 0.03*3=0.09,measuring variance.
+float Climb_Q = 0.0004; //process Variance
+float Climb_K = 0; //kalman gain
+float Climb_X_hat = 0; //init predict
+float Climb_X_hat_minus = 0; //previous predict
+float Climb_P = 1; //error variance
+//---Climb karlman bottom
+
+//---acc_Climb top
+extern void acc_Climb_update(void);
+float acc_Climb_dt = 0.01; //the delta time
+u32 acc_Climb_temp_time = 0; //the record time
+float acc_Climb_R = 23; //3sigma 23*3=69;
+float acc_Climb_Q = 0.0004; //process Variance
+float acc_Climb_K = 0; //kalman gain
+float acc_Climb_X_hat = 15300; //init predict
+float acc_Climb_X_hat_minus = 0; //previous predict
+float acc_Climb_P = 140; //error variance
+float acc_Climb = 0; //the climb rate
+
+float acc_Climb_err=0;
+float acc_Climb_out=0;
+//---acc_Climb bottom
+
+//---pressure kalman top
+extern void Kalman_filter_pressure(void);
+float pressure_dt = 0.01; //the delta time
+u32 pressure_temp_time = 0; //the record time
+float pressure_R = 7; //3sigma 7*3=21
+float pressure_Q = 0.0004; //process Variance
+float pressure_K = 0; //kalman gain
+float pressure_X_hat = 103050; //init predict
+float pressure_X_hat_minus = 0; //previous predict
+float pressure_P = 40; //error variance
+//---pressure kalman bottom
+
+extern void complementation_filter(void);
+
+
+
+//误差在1ms内，所以小伙子别怕哦
+
 int main(void)
 {
     //------------------------------初始化上界------------------------------
@@ -108,6 +218,7 @@ int main(void)
     u16 baochijiesuo = 0;//定义保持解锁计数器
     u16 baochijiasuo = 0;//定义保持加锁计数器
     int16_t temp1, temp2,  desthrottle, temp4; //用来作为中间变量,将遥控信号转换为预期角度
+    u8 i;//for循环用的
 
     SystemInit();//系统初始化
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//抢先等级分为0，1，2，3；子等级分为0,1(2:0)
@@ -153,7 +264,7 @@ int main(void)
     //初始化陀螺仪，实质上做的事情是把最开始三秒内的陀螺仪数据作为零位记录下来
 
     gyxt = xitongshijian; //记录程序到这时的系统毫秒值
-    while(xitongshijian * 0.001f < gyxt * 0.001f + 3) //当程序离开上一句运行三秒内
+    while(xitongshijian * 0.001f < gyxt * 0.001f + 3) //当程序离开上一句运行
     {
         if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))//读取陀螺仪原始数据
         {
@@ -167,8 +278,8 @@ int main(void)
             temp_axc = ((float)aacx + temp_axc) * 0.5;
             temp_ayc = ((float)aacy + temp_ayc) * 0.5;
             temp_azc = ((float)aacz + temp_azc) * 0.5;
+            acc_Climb_update();
         }
-
     }
     gyrox_chushi = (short)temp_gyxc;
     gyroy_chushi = (short)temp_gyyc;
@@ -176,16 +287,60 @@ int main(void)
 
     aacx_chushi = (short)temp_axc;
     aacy_chushi = (short)temp_ayc;
-    aacz_chushi = (short)temp_azc;
+    aacz_chushi = (short)acc_Climb_X_hat;
+
+
+
+    for(i = 0; i < 20; i++)
+    {
+        delay_ms(100);
+
+        MS561101BA_GetTemperature();//over 9.7ms
+        temp_TEMP = ((float)TEMP + temp_TEMP) * 0.5;
+    }
+	
+    TEMP_chushi = (int32_t)temp_TEMP;
+    temp_jisuan    = (float)TEMP_chushi / 100.00 + 273.15f;
+	
+    for(i = 0; i < 20; i++) //
+    {
+        delay_ms(100);
+
+        MS561101BA_getPressure();//over 9.7ms
+        Kalman_filter_pressure();
+
+
+    }
+
+    Pressure_chushi = pressure_X_hat_minus;
+
+
+    scaling = pressure_X_hat_minus / Pressure_chushi;
+    MS561101BA_get_altitude();//0.02ms
+    Altitude_chushi = MS5611_Altitude;
+
+    //pressure_K = 0; //kalman gain
+   // pressure_X_hat = Pressure_chushi; //init predict
+    //pressure_X_hat_minus = Pressure_chushi; //previous predict
+    //pressure_P = 40; //error variance
+
 
     //Uart1_Init(115200);//给ATKXCOMV2.0读数据时需要打开的通用异步收发串口波特率速率
-    //Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
+    Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
 
-	//Calculate_FilteringCoefficient(0.0050000, 10.0000000);//计算accz的低通滤波器增益
-	
+    //Calculate_FilteringCoefficient(0.0050000, 10.0000000);//计算accz的低通滤波器增益
+
     LED_Init();//初始化结束咯,耗时10s
     LED0 = 1; //灭掉红灯
     LED1 = 0; //绿灯亮着，表示解锁不可以
+
+    erhaomiao = xitongshijian * 0.5f;
+    wuhaomiao = xitongshijian * 0.2f;
+    shihaomiao = xitongshijian * 0.1f;
+    ershihaomiao = xitongshijian * 0.05f;
+    wushihaomiao = xitongshijian * 0.02f;
+    yibaihaomiao = xitongshijian * 0.01f;
+    miaozhong = xitongshijian * 0.001f;
 
     //------------------------------初始化下界------------------------------
 
@@ -309,44 +464,50 @@ int main(void)
         /*
                 if(xitongshijian * 0.5f > erhaomiao + 1)
                 {
-                    erhaomiao++;//每过二毫秒来这一次
+                    erhaomiao=xitongshijian*0.5f;//二毫秒一次,这根本不可能精确的啦
                 }
         */
         //二毫秒函数下界
         if(xitongshijian * 0.2f > wuhaomiao + 1)
         {
-            wuhaomiao++;//每过五毫秒来这一次
+            wuhaomiao = xitongshijian * 0.2f; //每过五毫秒来这一次
 
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //得到加速度传感器数据,耗时0.6ms
             {
                 //aacx_s = (float)aacx * 0.0005978;
                 //aacy_s = (float)aacy * 0.0005978;
                 //aacz_s = (float)aacz * 0.0005978;
-				
+
                 //Accz_filter();//加速度计Z轴滑动窗口滤波
-				//ACC_IIR_Filter();//加计IIR低通滤波器,在5ms内运行10Hz滤波
+                //ACC_IIR_Filter();//加计IIR低通滤波器,在5ms内运行10Hz滤波
+                acc_Climb_update();
+                acc_Climb_dt = (float)(xitongshijian - acc_Climb_temp_time) * 0.001;
+                acc_Climb_temp_time = xitongshijian;
+                acc_Climb += (acc_Climb_X_hat_minus - aacz_chushi) * 0.0005978 * acc_Climb_dt;
+				acc_Climb_out=acc_Climb-acc_Climb_err;
             }
 
             if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))  //得到陀螺仪数据,耗时0.6ms
             {
 
                 Gyro_filter();//滑动窗口滤波,耗时0.02ms
-				
-				                //gyrox_sr = (float)gyrox * 0.0010653;
+
+                //gyrox_sr = (float)gyrox * 0.0010653;
                 //gyroy_sr = (float)gyroy * 0.0010653;
                 //gyroz_sr = (float)gyroz * 0.0010653;
 
                 //gyrox_sd = (float)gyrox * 0.0610352;
                 //gyroy_sd = (float)gyroy * 0.0610352;
                 //gyroz_sd = (float)gyroz * 0.0610352;
-				
+
             }
+
 
         }
 
         if(xitongshijian * 0.1f > shihaomiao + 1)
         {
-            shihaomiao++;//每过十毫秒来这一次
+            shihaomiao = xitongshijian * 0.1f; //每过十毫秒来这一次
             mpu_dmp_get_data(&pitch, &roll, &yaw);//此句话消耗惊人的52ms,去掉50ms延迟后只需要2.1ms,这是mpu硬解姿态
             roll_err = roll - desroll; //得到roll角度误差
             pitch_err = pitch - despitch; //得到pitch角度误差
@@ -368,16 +529,15 @@ int main(void)
         }
         if(xitongshijian * 0.05f > ershihaomiao + 1)
         {
-            ershihaomiao++;//每过二十毫秒来这一次
-            
+            ershihaomiao = xitongshijian * 0.05f; //每过二十毫秒来这一次
             //0.09*65536/4=1475(short为int16_t,65536代表正负2g)
             //desthrottle -= (int16_t)(0.03 * (float)(accz_out - aacz_chushi)); //当aacz大于初始时，说明飞机向上,油门应该减小,这个太恐怖了，伤到我了
-			if(channel3_in > 1100)//只有油门大于1100时才允许更新油门和自动控制量
-			{
-			cyberNation();//更新电机,经典50Hz更新法,over 0.06ms
-			Moto_Throttle(Throttle_constrain(desthrottle));//只控制油门,但是这个函数会调用底层直接控制电机的函数.核心二调用一
-			}
-            //printf("  desthrottle =%d\r\n", desthrottle);
+            if(channel3_in > 1100)//只有油门大于1100时才允许更新油门和自动控制量
+            {
+                cyberNation();//更新电机,经典50Hz更新法,over 0.06ms
+                Moto_Throttle(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数.核心二调用一
+            }
+
             //MS561101BA_GetTemperature();//获取温度,消耗20.6ms,去掉10ms延迟后还需要10ms,以及将10ms改为8ms后,只需要8ms
             //MS561101BA_getPressure();   //获取大气压,消耗20.6ms,去掉延迟后,去掉10ms延迟后还需要10ms,以及将10ms改为8ms后,只需要8ms
 
@@ -415,28 +575,56 @@ int main(void)
 
 
         //----------------五十毫秒上界
-        /*
-                if(xitongshijian * 0.02f > wushihaomiao + 1)
-                {
-                    wushihaomiao++;//五十毫秒
-                    //ANO_DT_Send_Status(roll, pitch, yaw, (s32)0, (u8)0, (u8)0);//over 0.4ms
-                    //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox_out, gyroy_out, gyroz_out,(s16)desthrottle,(s16)0,(s16)0,(s32)0);//over 0.5ms
-                    //ANO_DT_Send_MotoPWM((u16) cNd1,(u16) cNd2,(u16) cNd3,(u16) cNd4,(u16) 0,(u16) 0,(u16) 0,(u16) 0);//over 0.5ms
-                    //ANO_DT_Send_RCData((u16)channel3_in,(u16) channel4_in,(u16) channel1_in,(u16) channel2_in,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0,(u16) 0);
 
-                    //ANO_DT_Send_Senser(aacx, accz_out/10, aacz/10, gyrox_out, gyroy_out, gyroz_out,(s16)desthrottle,(s16)0,(s16)0,(s32)0);//over 0.5ms
+        if(xitongshijian * 0.02f > wushihaomiao + 1)
+        {
+            wushihaomiao = xitongshijian * 0.02f; //五十毫秒
+            //ANO_DT_Send_Status(roll, pitch, yaw, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
+            //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Pressure); //over 0.5ms
+            //ANO_DT_Send_MotoPWM((u16) cNd1, (u16) cNd2, (u16) cNd3, (u16) cNd4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
+            //ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
 
-                }
-        */
+            //printf("  MS5611_Altitude =%fm\r\n", MS5611_Altitude);
+            //ANO_DT_Send_Senser(aacx, accz_out/10, aacz/10, gyrox_out, gyroy_out, gyroz_out,(s16)desthrottle,(s16)0,(s16)0,(s32)0);//over 0.5ms
+
+        }
+
         //---------------五十毫秒下界
 
+        //---------------一百毫秒上界
+        if(xitongshijian * 0.01f > yibaihaomiao + 1)
+        {
+            yibaihaomiao = xitongshijian * 0.01f; //一百毫秒来一次
+            //MS561101BA_GetTemperature();//over 9.1ms
+            MS561101BA_getPressure();//over 9.1ms
+            Kalman_filter_pressure();
+            scaling = pressure_X_hat_minus / Pressure_chushi;
+            MS561101BA_get_altitude();//0.02ms
+            //Kalman_filter_alt();//0.01ms
+            Altitude_dt = 0.001f * (float)(xitongshijian - Altitude_temp_time);
+            Altitude_temp_time = xitongshijian;
+            Kalman_filter_climb();
+			complementation_filter();//update acc_Climb_err
+            ANO_DT_Send_Senser(aacx-aacx_chushi, aacy-aacy_chushi, acc_Climb_X_hat_minus-aacz_chushi, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Pressure);
+            //ANO_DT_Send_Status(MS5611_Altitude-Altitude_chushi, Altitude_X_hat_minus-Altitude_chushi, (Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
+            //ANO_DT_Send_Status((Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, acc_Climb, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
+
+            ANO_DT_Send_Status(acc_Climb, acc_Climb_out, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0); //over 0.4ms
+			Altitude_minus=MS5611_Altitude;
+        }
+        //---------------一百毫秒下界
 
 
         //----------------------一秒周期运行上界
 
         if(xitongshijian * 0.001f > miaozhong + 1)
         {
-            miaozhong++;//每过一秒来这里一次
+            miaozhong = xitongshijian * 0.001f; //每过一秒来这里一次
+            //printf("  TEMP =%.2f℃\r\n", (float)TEMP / 100.00);
+            //printf("  MS5611_Pressure =%fmbar\r\n", MS5611_Pressure / 100);
+            //printf("  MS5611_Altitude =%f\r\n", MS5611_Altitude-Altitude_chushi);
+            //printf("  Altitude_X_hat =%f\r\n", Altitude_X_hat_minus-Altitude_chushi);
+
             //            temp=MPU_Get_Temperature();
 
             //            printf("  mpu temp=%.2f\r\n", temp*0.01f);//mpu温度

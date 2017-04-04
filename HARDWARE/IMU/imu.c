@@ -27,9 +27,9 @@
 //----------------------------------------------------------------------------------------------------
 // Definitions
 
-//#define Kp 2.0f                        // proportional gain governs rate of convergence to accelerometer/magnetometer
-//#define Ki 0.005f                // integral gain governs rate of convergence of gyroscope biases
-//#define halfT 0.5f                // half the sample period
+//#define Kp 2.0f // proportional gain governs rate of convergence to accelerometer/magnetometer
+//#define Ki 0.005f // integral gain governs rate of convergence of gyroscope biases
+//#define halfT 0.5f  // half the sample period
 
 //试着修改一次,照这个重点参数
 #define Kp 10.0f            
@@ -144,46 +144,13 @@ void ag2q2rpy(float gx, float gy, float gz, float ax, float ay, float az,float *
 // END OF CODE
 //====================================================================================================
 
+extern float acc_Climb;
+extern float Climb_X_hat_minus;
+extern float acc_Climb_err;
 
-/*-------------------------------------------------------------------------------------------------------------*/
-/*       
-        Q:过程噪声，Q增大，动态响应变快，收敛稳定性变坏
-        R:测量噪声，R增大，动态响应变慢，收敛稳定性变好       
-*/
-//accel_x karlmanfilter
-extern float p_last,x_last;
-
-float KalmanFilter(const float ResrcData,
- float ProcessNiose_Q,
- float MeasureNoise_R,
- float InitialPrediction)
+void complementation_filter(void)
 {
-        float R = MeasureNoise_R;
-        float Q = ProcessNiose_Q;
-
-        //static        float x_last;
-
-        float x_mid = x_last;
-        float x_now;
-
-        //static        float p_last;
-
-        float p_mid ;
-        float p_now;
-        float kg;       
-
-        x_mid=x_last; //x_last=x(k-1|k-1),x_mid=x(k|k-1)
-        p_mid=p_last+Q; //p_mid=p(k|k-1),p_last=p(k-1|k-1),Q=噪声
-        kg=p_mid/(p_mid+R); //kg为kalman filter，R为噪声
-        x_now=x_mid+kg*(ResrcData-x_mid);//估计出的最优值
-               
-        p_now=(1-kg)*p_mid;//最优值对应的covariance       
-
-        p_last = p_now; //更新covariance值
-        x_last = x_now; //更新系统状态值
-
-        return x_now;               
+	acc_Climb_err=acc_Climb-Climb_X_hat_minus;//get the error
+	
 }
-
-/*-------------------------------------------------------------------------------------------------------------*/
 
