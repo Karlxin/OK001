@@ -105,6 +105,7 @@ extern void Calculate_FilteringCoefficient(float Time, float Cut_Off);
 extern void ACC_IIR_Filter(void);
 extern int16_t Throttle_constrain(int16_t Throttle);
 
+extern void Altitude_hold_update(void);
 
 //-----------气压计传感器用到的上界
 
@@ -171,8 +172,8 @@ extern void Kalman_filter_climb(void);
 float Climb_R = 0.03; //3sigma 0.03*3=0.09,measuring variance.
 float Climb_Q = 0.0004; //process Variance
 float Climb_K = 0; //kalman gain
-float Climb_X_hat = 0; //init predict
-float Climb_X_hat_minus = 0; //previous predict
+float Climb_X_hat = 0; //init predict for Climb rate
+float Climb_X_hat_minus = 0; //previous predict for Climb rate
 float Climb_P = 1; //error variance
 //---Climb karlman bottom
 
@@ -183,8 +184,8 @@ u32 acc_Climb_temp_time = 0; //the record time
 float acc_Climb_R = 23; //3sigma 23*3=69;
 float acc_Climb_Q = 0.0004; //process Variance
 float acc_Climb_K = 0; //kalman gain
-float acc_Climb_X_hat = 15300; //init predict
-float acc_Climb_X_hat_minus = 0; //previous predict
+float acc_Climb_X_hat = 15300; //init predict for accz
+float acc_Climb_X_hat_minus = 0; //previous predict for accz
 float acc_Climb_P = 140; //error variance
 float acc_Climb = 0; //the climb rate
 
@@ -206,7 +207,7 @@ float pressure_P = 40; //error variance
 
 extern void complementation_filter(void);
 
-
+float Ahd=0;
 
 //误差在1ms内，所以小伙子别怕哦
 
@@ -289,8 +290,6 @@ int main(void)
     aacy_chushi = (short)temp_ayc;
     aacz_chushi = (short)acc_Climb_X_hat;
 
-
-
     for(i = 0; i < 20; i++)
     {
         delay_ms(100);
@@ -314,16 +313,9 @@ int main(void)
 
     Pressure_chushi = pressure_X_hat_minus;
 
-
     scaling = pressure_X_hat_minus / Pressure_chushi;
     MS561101BA_get_altitude();//0.02ms
     Altitude_chushi = MS5611_Altitude;
-
-    //pressure_K = 0; //kalman gain
-   // pressure_X_hat = Pressure_chushi; //init predict
-    //pressure_X_hat_minus = Pressure_chushi; //previous predict
-    //pressure_P = 40; //error variance
-
 
     //Uart1_Init(115200);//给ATKXCOMV2.0读数据时需要打开的通用异步收发串口波特率速率
     Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
@@ -535,6 +527,7 @@ int main(void)
             if(channel3_in > 1100)//只有油门大于1100时才允许更新油门和自动控制量
             {
                 cyberNation();//更新电机,经典50Hz更新法,over 0.06ms
+				Altitude_hold_update();//定高叠加量
                 Moto_Throttle(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数.核心二调用一
             }
 
@@ -579,8 +572,10 @@ int main(void)
         if(xitongshijian * 0.02f > wushihaomiao + 1)
         {
             wushihaomiao = xitongshijian * 0.02f; //五十毫秒
+			ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
+			
             //ANO_DT_Send_Status(roll, pitch, yaw, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
-            //ANO_DT_Send_Senser(aacx, aacy, aacz, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Pressure); //over 0.5ms
+            ANO_DT_Send_Senser(aacx, aacy, (s16)acc_Climb_X_hat_minus * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Altitude*100); //over 0.5ms
             //ANO_DT_Send_MotoPWM((u16) cNd1, (u16) cNd2, (u16) cNd3, (u16) cNd4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
             //ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
 
@@ -605,11 +600,11 @@ int main(void)
             Altitude_temp_time = xitongshijian;
             Kalman_filter_climb();
 			complementation_filter();//update acc_Climb_err
-            ANO_DT_Send_Senser(aacx-aacx_chushi, aacy-aacy_chushi, acc_Climb_X_hat_minus-aacz_chushi, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Pressure);
+            //ANO_DT_Send_Senser(aacx-aacx_chushi, aacy-aacy_chushi, acc_Climb_X_hat_minus-aacz_chushi, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Pressure);
             //ANO_DT_Send_Status(MS5611_Altitude-Altitude_chushi, Altitude_X_hat_minus-Altitude_chushi, (Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
             //ANO_DT_Send_Status((Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, acc_Climb, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
 
-            ANO_DT_Send_Status(acc_Climb, acc_Climb_out, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0); //over 0.4ms
+            //ANO_DT_Send_Status(acc_Climb, acc_Climb_out, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0); //over 0.4ms
 			Altitude_minus=MS5611_Altitude;
         }
         //---------------一百毫秒下界

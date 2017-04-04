@@ -49,6 +49,13 @@ float KP_THETA_X = 3, KP_THETA_Y = 3, KP_THETA_Z = 3;//常量
 float KP_OMEGA_X = 0.7*0.0610370, KP_OMEGA_Y = 0.6*0.0610370, KP_OMEGA_Z = 0.7*0.0610370;//常量
 float kp_theta_x = 3, kp_theta_y = 3, kp_theta_z = 3;//变量
 float kp_omega_x = 0.7*0.0610370, kp_omega_y = 0.6*0.0610370, kp_omega_z = 0.7*0.0610370;//变量
+//6*130=780;
+//0.5*1000=500;
+//consideration of mass of 1837g for MATLAB theory 
+float KP_VEL_Z=5*0.5443658;
+float KP_ACC_Z=0.5*0.5443658;
+float kp_vel_Z=5*0.5443658;
+float kp_acc_Z=0.5*0.5443658;
 //PD控制器调试下端
 
 extern float rjz,pjz,yjz;//将cNd1等数据分别转换为roll,pitch,yaw方向的纠正量，以便示波观察
@@ -63,6 +70,9 @@ extern float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
 extern short gyrox_out,gyroy_out,gyroz_out;
 extern short aacx, aacy, aacz;     //加速度传感器原始数据
 extern short accz_out;
+
+extern float Ahd;
+extern u16 channel3_in;
 
 int16_t Constrain_up(int16_t throttle,int16_t max)
 {
@@ -113,10 +123,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
     int16_t d1, d2, d3, d4;
-    d1 = Constrain_up(desthrottle,1780)+cNd1; //            CW3     1CCW	   / \				 
-    d2 = Constrain_up(desthrottle,1780)+cNd2; //  俯视图        * *          / | \ X轴      	  Y轴
-    d3 = Constrain_up(desthrottle,1780)+cNd3; //                 *             |                <=======
-    d4 = Constrain_up(desthrottle,1780)+cNd4; //      	     CCW2    4CW        |
+    d1 = Constrain_up(desthrottle,1780)+cNd1+Constrain((int16_t)Ahd,30,-30); //              CW3     1CCW	   / \				 
+    d2 = Constrain_up(desthrottle,1780)+cNd2+Constrain((int16_t)Ahd,30,-30); //  俯视图          * *          / | \ X轴      	  Y轴
+    d3 = Constrain_up(desthrottle,1780)+cNd3+Constrain((int16_t)Ahd,30,-30); //                   *             |                <=======
+    d4 = Constrain_up(desthrottle,1780)+cNd4+Constrain((int16_t)Ahd,30,-30); //      	     CCW2    4CW        |
 
     Moto_PwmRflash(d1, d2, d3, d4);//此函数是最终改变油门的函数,核心一调用三
 }
@@ -262,6 +272,7 @@ extern float acc_Climb_X_hat;
 extern float acc_Climb_X_hat_minus;
 extern float acc_Climb_P;
 
+//this function use kalman filter to filt accz
 void acc_Climb_update(void)
 {
 	//time update
@@ -274,6 +285,15 @@ void acc_Climb_update(void)
 	acc_Climb_P=(1-acc_Climb_K)*acc_Climb_P;
 }
 
+extern float acc_Climb_out;
+extern short aacz_chushi;
 
-
+void Altitude_hold_update(void)
+{
+	if(1500<channel3_in<1550)
+	{
+	Ahd=-kp_vel_Z*acc_Climb_out-kp_acc_Z*(acc_Climb_X_hat_minus - (float)aacz_chushi);
+	}
+	Ahd=0;//防止意外的发生嘛
+}
 
