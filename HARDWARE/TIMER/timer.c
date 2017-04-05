@@ -66,7 +66,7 @@ u32 tim4_T2;
 u32 tim4_T3;
 u32 tim4_T4;
 
-u16 channel1_in, channel2_in, channel3_in, channel4_in; 				//收到的遥控占空比(1000~2000)
+extern u32 channel1_in, channel2_in, channel3_in, channel4_in; 				//收到的遥控占空比(1000~2000)
 
 //定时器五计时初始化上端
 
