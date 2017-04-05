@@ -176,27 +176,17 @@
         <Ww>
           <count>1</count>
           <WinNumber>1</WinNumber>
-          <ItemText>acc_Climb_out*100</ItemText>
+          <ItemText>roll</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>acc_Climb*100</ItemText>
+          <ItemText>pitch</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>acc_Climb_err*100</ItemText>
-        </Ww>
-        <Ww>
-          <count>4</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>MS5611_Altitude*100</ItemText>
-        </Ww>
-        <Ww>
-          <count>5</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>Climb_X_hat_minus*100</ItemText>
+          <ItemText>debug[0]</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>

@@ -1,6 +1,7 @@
 #include "moto.h"
 #include "stm32f10x.h"
 #include "delay.h"
+#include "math.h"
 //////////////////////////////////////////////////////////////////////////////////
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //ALIENTEK Mini STM32开发板
@@ -74,6 +75,8 @@ extern short accz_out;
 extern float Ahd;
 extern u16 channel3_in;
 
+extern float Scd;
+
 int16_t Constrain_up(int16_t throttle,int16_t max)
 {
 	if(throttle>max)
@@ -123,28 +126,12 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
     int16_t d1, d2, d3, d4;
-    d1 = Constrain_up(desthrottle,1780)+cNd1+Constrain((int16_t)Ahd,30,-30); //              CW3     1CCW	   / \				 
-    d2 = Constrain_up(desthrottle,1780)+cNd2+Constrain((int16_t)Ahd,30,-30); //  俯视图          * *          / | \ X轴      	  Y轴
-    d3 = Constrain_up(desthrottle,1780)+cNd3+Constrain((int16_t)Ahd,30,-30); //                   *             |                <=======
-    d4 = Constrain_up(desthrottle,1780)+cNd4+Constrain((int16_t)Ahd,30,-30); //      	     CCW2    4CW        |
+    d1 = Constrain_up(desthrottle,1780)+Constrain(cNd1,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //              CW3     1CCW	   / \				 
+    d2 = Constrain_up(desthrottle,1780)+Constrain(cNd2,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //  俯视图          * *           / | \ X轴      	  Y轴
+    d3 = Constrain_up(desthrottle,1780)+Constrain(cNd3,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //                   *              |                <=======
+    d4 = Constrain_up(desthrottle,1780)+Constrain(cNd4,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //      	    CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//此函数是最终改变油门的函数,核心一调用三
-}
-
-//没有这个限制函数简直要爆炸哦,暂时限制到300吧
-int16_t xianzhi(int16_t a)
-{
-	if(a>300)
-	{
-		return 300;
-	}
-	
-	if(a<-300)
-	{
-		return -300;
-	}
-	
-	return a;
 }
 
 float sfabs(float a)//单精度绝对值函数
@@ -177,10 +164,6 @@ void cyberNation(void)
     cNd3 = -roll_err * kp_theta_x + pitch_err * kp_theta_y - yaw_err * kp_theta_z - gyrox_out * kp_omega_x + gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
     cNd4 = +roll_err * kp_theta_x - pitch_err * kp_theta_y - yaw_err * kp_theta_z + gyrox_out * kp_omega_x - gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
 	
-	cNd1=xianzhi(cNd1);
-	cNd2=xianzhi(cNd2);
-	cNd3=xianzhi(cNd3);
-	cNd4=xianzhi(cNd4);
 }
 
 //此函数将cNd1~cNd4电机单个纠正量转化为roll,pitch,yaw方向的纠正量
@@ -265,25 +248,69 @@ void ACC_IIR_Filter(void)
 	accz_out = accz_out + ACC_IIR_FACTOR*(aacz - accz_out); 
 }
 
-extern float acc_Climb_R;
-extern float acc_Climb_Q;
-extern float acc_Climb_K;
-extern float acc_Climb_X_hat;
-extern float acc_Climb_X_hat_minus;
-extern float acc_Climb_P;
+extern float accz_R;
+extern float accz_Q;
+extern float accz_K;
+extern float accz_X_hat;
+extern float accz_X_hat_minus;
+extern float accz_P;
 
 //this function use kalman filter to filt accz
-void acc_Climb_update(void)
+void Kalman_filter_accz(void)
 {
 	//time update
-	acc_Climb_X_hat_minus=acc_Climb_X_hat;
-    acc_Climb_P=acc_Climb_P+acc_Climb_Q;
+	accz_X_hat_minus=accz_X_hat;
+    accz_P=accz_P+accz_Q;
 	
 	//predict update
-	acc_Climb_K=acc_Climb_P/(acc_Climb_P+acc_Climb_R);
-	acc_Climb_X_hat=acc_Climb_X_hat_minus+acc_Climb_K*(aacz-acc_Climb_X_hat_minus);
-	acc_Climb_P=(1-acc_Climb_K)*acc_Climb_P;
+	accz_K=accz_P/(accz_P+accz_R);
+	accz_X_hat=accz_X_hat_minus+accz_K*(aacz-accz_X_hat_minus);
+	accz_P=(1-accz_K)*accz_P;
 }
+
+
+
+
+extern float accy_R;
+extern float accy_Q;
+extern float accy_K;
+extern float accy_X_hat;
+extern float accy_X_hat_minus;
+extern float accy_P;
+
+//this function use kalman filter to filt accy
+void Kalman_filter_accy(void)
+{
+	//time update
+	accy_X_hat_minus=accy_X_hat;
+    accy_P=accy_P+accy_Q;
+	
+	//predict update
+	accy_K=accy_P/(accy_P+accy_R);
+	accy_X_hat=accy_X_hat_minus+accy_K*(aacy-accy_X_hat_minus);
+	accy_P=(1-accy_K)*accy_P;
+}
+
+extern float accx_R;
+extern float accx_Q;
+extern float accx_K;
+extern float accx_X_hat;
+extern float accx_X_hat_minus;
+extern float accx_P;
+
+//this function use kalman filter to filt accx
+void Kalman_filter_accx(void)
+{
+	//time update
+	accx_X_hat_minus=accx_X_hat;
+    accx_P=accx_P+accx_Q;
+	
+	//predict update
+	accx_K=accx_P/(accx_P+accx_R);
+	accx_X_hat=accx_X_hat_minus+accx_K*(aacx-accx_X_hat_minus);
+	accx_P=(1-accx_K)*accx_P;
+}
+
 
 extern float acc_Climb_out;
 extern short aacz_chushi;
@@ -292,8 +319,18 @@ void Altitude_hold_update(void)
 {
 	if(1500<channel3_in<1550)
 	{
-	Ahd=-kp_vel_Z*acc_Climb_out-kp_acc_Z*(acc_Climb_X_hat_minus - (float)aacz_chushi);
+	Ahd=-kp_vel_Z*acc_Climb_out-kp_acc_Z*(accz_X_hat_minus - (float)aacz_chushi);
+	Ahd=0;//暂时不要这个补偿
 	}
 	Ahd=0;//防止意外的发生嘛
 }
+
+
+//degree to radian by multiplier 0.0174533
+void Sink_compensation(void)
+{
+	Scd=(channel3_in-1000)/(cosf(desroll* 0.0174533)*cosf(despitch* 0.0174533))-(channel3_in-1000);//cosine between EarthFrame_Z with BodyFrame_Z
+	Scd=0;//先测试以前的还能工作吗
+}
+
 

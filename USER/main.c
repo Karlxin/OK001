@@ -11,6 +11,7 @@
 #include "mpu6050.h"//陀螺仪加速度计
 #include "inv_mpu.h"//mpu的硬件配置以及读数相关
 #include "inv_mpu_dmp_motion_driver.h"//mpu的硬件配置以及读数相关
+#include "math.h"
 
 #include <stdio.h>//带缓冲的标准输入输出
 
@@ -177,21 +178,48 @@ float Climb_X_hat_minus = 0; //previous predict for Climb rate
 float Climb_P = 1; //error variance
 //---Climb karlman bottom
 
-//---acc_Climb top
-extern void acc_Climb_update(void);
-float acc_Climb_dt = 0.01; //the delta time
-u32 acc_Climb_temp_time = 0; //the record time
-float acc_Climb_R = 23; //3sigma 23*3=69;
-float acc_Climb_Q = 0.0004; //process Variance
-float acc_Climb_K = 0; //kalman gain
-float acc_Climb_X_hat = 15300; //init predict for accz
-float acc_Climb_X_hat_minus = 0; //previous predict for accz
-float acc_Climb_P = 140; //error variance
-float acc_Climb = 0; //the climb rate
+//---Kalman_filter_accz top
+extern void Kalman_filter_accz(void);
+float accz_dt = 0.01; //the delta time
+u32 accz_temp_time = 0; //the record time
+float accz_R = 23; //3sigma 23*3=69;
+float accz_Q = 0.0004; //process Variance
+float accz_K = 0; //kalman gain
+float accz_X_hat = 15300; //init predict for accz
+float accz_X_hat_minus = 0; //previous predict for accz
+float accz_P = 140; //error variance
 
+float acc_Climb = 0; //the climb rate
 float acc_Climb_err=0;
 float acc_Climb_out=0;
-//---acc_Climb bottom
+//---Kalman_filter_accz bottom
+
+//---Kalman_filter_accy top
+extern void Kalman_filter_accy(void);
+float accy_dt = 0.01; //the delta time
+u32 accy_temp_time = 0; //the record time
+float accy_R = 23; //3sigma 23*3=69;
+float accy_Q = 0.0004; //process Variance
+float accy_K = 0; //kalman gain
+float accy_X_hat = 300; //init predict for accy
+float accy_X_hat_minus = 0; //previous predict for accy
+float accy_P = 140; //error variance
+//---Kalman_filter_accy bottom
+
+//---Kalman_filter_accx top
+extern void Kalman_filter_accx(void);
+float accx_dt = 0.01; //the delta time
+u32 accx_temp_time = 0; //the record time
+float accx_R = 23; //3sigma 23*3=69;
+float accx_Q = 0.0004; //process Variance
+float accx_K = 0; //kalman gain
+float accx_X_hat = -170; //init predict for accx
+float accx_X_hat_minus = 0; //previous predict for accx
+float accx_P = 140; //error variance
+//---Kalman_filter_accx bottom
+
+
+
 
 //---pressure kalman top
 extern void Kalman_filter_pressure(void);
@@ -207,7 +235,12 @@ float pressure_P = 40; //error variance
 
 extern void complementation_filter(void);
 
-float Ahd=0;
+float Ahd=0;//定高油门补偿
+
+extern void Sink_compensation(void);//掉高更新
+float Scd=0;//掉高油门补偿
+
+float debug[10];
 
 //误差在1ms内，所以小伙子别怕哦
 
@@ -259,7 +292,7 @@ int main(void)
     TIM5_Int_Init(9, 7199); //系统计时开始1ms溢出版本
     //TIM5_Int_Init(9, 3599); //系统计时开始0.5ms溢出版本
 
-    delay_ms(300);//延迟个三百吧，也不知道可不可以消除这句
+    delay_ms(300);
 
 
     //初始化陀螺仪，实质上做的事情是把最开始三秒内的陀螺仪数据作为零位记录下来
@@ -279,7 +312,7 @@ int main(void)
             temp_axc = ((float)aacx + temp_axc) * 0.5;
             temp_ayc = ((float)aacy + temp_ayc) * 0.5;
             temp_azc = ((float)aacz + temp_azc) * 0.5;
-            acc_Climb_update();
+            Kalman_filter_accz();
         }
     }
     gyrox_chushi = (short)temp_gyxc;
@@ -288,7 +321,7 @@ int main(void)
 
     aacx_chushi = (short)temp_axc;
     aacy_chushi = (short)temp_ayc;
-    aacz_chushi = (short)acc_Climb_X_hat;
+    aacz_chushi = (short)accz_X_hat;
 
     for(i = 0; i < 20; i++)
     {
@@ -307,8 +340,6 @@ int main(void)
 
         MS561101BA_getPressure();//over 9.7ms
         Kalman_filter_pressure();
-
-
     }
 
     Pressure_chushi = pressure_X_hat_minus;
@@ -318,7 +349,7 @@ int main(void)
     Altitude_chushi = MS5611_Altitude;
 
     //Uart1_Init(115200);//给ATKXCOMV2.0读数据时需要打开的通用异步收发串口波特率速率
-    Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
+    //Uart1_Init(500000);//给匿名4.06读数据时需要打开的速率
 
     //Calculate_FilteringCoefficient(0.0050000, 10.0000000);//计算accz的低通滤波器增益
 
@@ -373,6 +404,7 @@ int main(void)
                 {
                     temp4 = 1507 - channel4_in;//想要的偏航为通道四中位差
                     desyaw = (float)temp4 * 0.0361446; //转换为正负15
+					desyaw=0;//我们暂时不想要手动控制yaw
 
                 }
                 else//通道四接收信号在工程意义中间
@@ -472,11 +504,13 @@ int main(void)
 
                 //Accz_filter();//加速度计Z轴滑动窗口滤波
                 //ACC_IIR_Filter();//加计IIR低通滤波器,在5ms内运行10Hz滤波
-                acc_Climb_update();
-                acc_Climb_dt = (float)(xitongshijian - acc_Climb_temp_time) * 0.001;
-                acc_Climb_temp_time = xitongshijian;
-                acc_Climb += (acc_Climb_X_hat_minus - aacz_chushi) * 0.0005978 * acc_Climb_dt;
+                Kalman_filter_accz();
+                accz_dt = (float)(xitongshijian - accz_temp_time) * 0.001;
+                accz_temp_time = xitongshijian;
+                acc_Climb += (accz_X_hat_minus - aacz_chushi) * 0.0005978 * accz_dt;
 				acc_Climb_out=acc_Climb-acc_Climb_err;
+				//Kalman_filter_accy();
+				//Kalman_filter_accx();
             }
 
             if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))  //得到陀螺仪数据,耗时0.6ms
@@ -527,7 +561,8 @@ int main(void)
             if(channel3_in > 1100)//只有油门大于1100时才允许更新油门和自动控制量
             {
                 cyberNation();//更新电机,经典50Hz更新法,over 0.06ms
-				Altitude_hold_update();//定高叠加量
+				//Altitude_hold_update();//定高叠加量
+				Sink_compensation();//油门补偿叠加量
                 Moto_Throttle(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数.核心二调用一
             }
 
@@ -572,15 +607,17 @@ int main(void)
         if(xitongshijian * 0.02f > wushihaomiao + 1)
         {
             wushihaomiao = xitongshijian * 0.02f; //五十毫秒
-			ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
+			//ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
+			
+			//debug[0]=cosf(roll*0.0174533);
 			
             //ANO_DT_Send_Status(roll, pitch, yaw, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
-            ANO_DT_Send_Senser(aacx, aacy, (s16)acc_Climb_X_hat_minus * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Altitude*100); //over 0.5ms
+            //ANO_DT_Send_Senser((s16)(979.0f*(cosf(roll* 0.0174533)*cosf(pitch* 0.0174533))), (s16)aacy* 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Altitude*100); //over 0.5ms
             //ANO_DT_Send_MotoPWM((u16) cNd1, (u16) cNd2, (u16) cNd3, (u16) cNd4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
             //ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
 
             //printf("  MS5611_Altitude =%fm\r\n", MS5611_Altitude);
-            //ANO_DT_Send_Senser(aacx, accz_out/10, aacz/10, gyrox_out, gyroy_out, gyroz_out,(s16)desthrottle,(s16)0,(s16)0,(s32)0);//over 0.5ms
+            //ANO_DT_Send_Senser(accx_X_hat_minus, accy_X_hat_minus, accz_X_hat_minus, gyrox_out, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
 
         }
 
