@@ -37,14 +37,14 @@ extern u8 mpu_dmp_init(void);
 
 extern u8 ARMED;
 
-u32 xitongshijian = 0; //系统运行时间,以毫秒计，最多计1193+小时
-u32 erhaomiao = 0;//二毫秒
-u32 wuhaomiao = 0;//五毫秒
-u32 shihaomiao = 0; //系统运行时间，以十毫秒计,最多计119304+小时
-u32 ershihaomiao = 0; //系统运行时间,以二十毫秒,最多计59652+小时
-u32 wushihaomiao = 0;
-u32 yibaihaomiao = 0;
-u32 miaozhong = 0; //系统运行时间，以秒计,最多计1193000+小时
+u32 xitongshijian = 0; //system timer,resolution of 0.1ms,119hour
+u32 erhaomiao = 0;//two millisecond resolution
+u32 wuhaomiao = 0;//five millisecond resolution
+u32 shihaomiao = 0; //ten millisecond resolution
+u32 ershihaomiao = 0; //twenty millisecond resolution
+u32 wushihaomiao = 0;//fifty millisecond resolution
+u32 yibaihaomiao = 0;//hundred millisecond resolution
+u32 miaozhong = 0; //second resolution
 
 float roll, pitch, yaw;         //欧拉角,DMP硬解得到的角度,roll -180~180 pitch -90~90 yaw -180~180
 short aacx, aacy, aacz;     //加速度传感器原始数据
@@ -157,7 +157,7 @@ float Altitude_chushi;
 
 //---Alt karlman top
 extern void Kalman_filter_alt(void);
-float Altitude_minus=0;
+float Altitude_minus = 0;
 float Altitude_dt = 0.1; //the delta time
 u32 Altitude_temp_time = 0; //record the time
 float Altitude_R = 0.07; //3sigma 0.07*3=0.21,measuring variance.
@@ -190,8 +190,8 @@ float accz_X_hat_minus = 0; //previous predict for accz
 float accz_P = 140; //error variance
 
 float acc_Climb = 0; //the climb rate
-float acc_Climb_err=0;
-float acc_Climb_out=0;
+float acc_Climb_err = 0;
+float acc_Climb_out = 0;
 //---Kalman_filter_accz bottom
 
 //---Kalman_filter_accy top
@@ -218,9 +218,6 @@ float accx_X_hat_minus = 0; //previous predict for accx
 float accx_P = 140; //error variance
 //---Kalman_filter_accx bottom
 
-
-
-
 //---pressure kalman top
 extern void Kalman_filter_pressure(void);
 float pressure_dt = 0.01; //the delta time
@@ -235,10 +232,10 @@ float pressure_P = 40; //error variance
 
 extern void complementation_filter(void);
 
-float Ahd=0;//定高油门补偿
+float Ahd = 0; //定高油门补偿
 
 extern void Sink_compensation(void);//掉高更新
-float Scd=0;//掉高油门补偿
+float Scd = 0; //掉高油门补偿
 
 float debug[10];
 
@@ -254,13 +251,13 @@ int main(void)
     int16_t temp1, temp2,  desthrottle, temp4; //用来作为中间变量,将遥控信号转换为预期角度
     u8 i;//for循环用的
 
-    SystemInit();//系统初始化
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//抢先等级分为0，1，2，3；子等级分为0,1(2:0)
-    delay_init();//延迟初始化
+    SystemInit();//系统初始化,over 0.02628ms
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//抢先等级分为0，1，2，3；子等级分为0,1(2:0),over 0.0004ms
+    delay_init();//延迟初始化,over 0.00114s
 
-    TIM3_PWM_Init(19999, 71);  //50Hz
+    TIM3_PWM_Init(19999, 71);  //50Hz,over 0.02154ms
 
-    TIM_SetCompare1(TIM3, 2000);        //设置占空比
+    TIM_SetCompare1(TIM3, 2000);        //设置占空比,over 0.00047ms
     TIM_SetCompare2(TIM3, 2000);        //设置占空比
     TIM_SetCompare3(TIM3, 2000);        //设置占空比
     TIM_SetCompare4(TIM3, 2000);        //设置占空比
@@ -274,35 +271,34 @@ int main(void)
 
     delay_ms(3000);//延迟3000ms
 
-    MPU_Init();                 //初始化MPU6050
+    MPU_Init();                 //初始化MPU6050,over 0.103s
     while(mpu_dmp_init())//加速度计和陀螺仪是否初始化
     {
         delay_ms(200);//延迟200ms
         delay_ms(200);//延迟200ms
-    }
+    }//over 1.91s
     delay_ms(1000);//延迟1000ms
-    IIC_Init();//集成电路总线初始化
+    IIC_Init();//集成电路总线初始化,over 0.00546ms
     delay_ms(100);//延迟零点一秒
-    MS561101BA_RESET();//气压计清除
+    MS561101BA_RESET();//气压计清除,over 0.35881ms
     delay_ms(100);//延迟零点一秒
-    MS5611_init();//气压计初始化
+    MS5611_init();//气压计初始化,over 0.0324s
     delay_ms(1000);//延迟一秒
 
-    TIM4_Cap_Init(0xffff, 72 - 1); //PWM捕获初始化,以1Mhz的频率计数
-    TIM5_Int_Init(9, 7199); //系统计时开始1ms溢出版本
-    //TIM5_Int_Init(9, 3599); //系统计时开始0.5ms溢出版本
+    TIM4_Cap_Init(0xffff, 72 - 1); //PWM捕获初始化,以1Mhz的频率计数,over 0.02819ms
+    TIM5_Int_Init(9, 719); //系统计时开始,resolution of 0.1ms
 
-    delay_ms(300);
+    delay_ms(300);//delay 300 milliseconds
 
 
     //初始化陀螺仪，实质上做的事情是把最开始三秒内的陀螺仪数据作为零位记录下来
 
-    gyxt = xitongshijian; //记录程序到这时的系统毫秒值
+    gyxt = xitongshijian; //记录程序到这时的系统毫秒值,over 0.00172ms
     while(xitongshijian * 0.001f < gyxt * 0.001f + 3) //当程序离开上一句运行
     {
         if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))//读取陀螺仪原始数据
         {
-            temp_gyxc = ((float)gyrox  + temp_gyxc) * 0.5;
+            temp_gyxc = ((float)gyrox  + temp_gyxc) * 0.5;//to get averaged initial data
             temp_gyyc = ((float)gyroy  + temp_gyyc) * 0.5;
             temp_gyzc = ((float)gyroz  + temp_gyzc) * 0.5;
         }
@@ -312,10 +308,10 @@ int main(void)
             temp_axc = ((float)aacx + temp_axc) * 0.5;
             temp_ayc = ((float)aacy + temp_ayc) * 0.5;
             temp_azc = ((float)aacz + temp_azc) * 0.5;
-            Kalman_filter_accz();
+            Kalman_filter_accz();//call the Kalman filter
         }
-    }
-    gyrox_chushi = (short)temp_gyxc;
+    }//over 3s
+    gyrox_chushi = (short)temp_gyxc;//record the initial data,over 0.00211ms
     gyroy_chushi = (short)temp_gyyc;
     gyroz_chushi = (short)temp_gyzc;
 
@@ -323,29 +319,29 @@ int main(void)
     aacy_chushi = (short)temp_ayc;
     aacz_chushi = (short)accz_X_hat;
 
-    for(i = 0; i < 20; i++)
+    for(i = 0; i < 20; i++)//20*100=2000milliseconds
     {
         delay_ms(100);
 
         MS561101BA_GetTemperature();//over 9.7ms
         temp_TEMP = ((float)TEMP + temp_TEMP) * 0.5;
-    }
-	
-    TEMP_chushi = (int32_t)temp_TEMP;
-    temp_jisuan    = (float)TEMP_chushi / 100.00 + 273.15f;
-	
-    for(i = 0; i < 20; i++) //
+    }//over 2.195s
+
+    TEMP_chushi = (int32_t)temp_TEMP;//over 0.00203ms
+    temp_jisuan    = (float)TEMP_chushi / 100.00 + 273.15f;//for the altitude conversion
+
+    for(i = 0; i < 20; i++)
     {
         delay_ms(100);
 
         MS561101BA_getPressure();//over 9.7ms
         Kalman_filter_pressure();
-    }
+    }//over 2.1945s
 
     Pressure_chushi = pressure_X_hat_minus;
 
-    scaling = pressure_X_hat_minus / Pressure_chushi;
-    MS561101BA_get_altitude();//0.02ms
+    scaling = pressure_X_hat_minus / Pressure_chushi;//for the altitude conversion
+    MS561101BA_get_altitude();//over 0.02ms
     Altitude_chushi = MS5611_Altitude;
 
     //Uart1_Init(115200);//给ATKXCOMV2.0读数据时需要打开的通用异步收发串口波特率速率
@@ -353,22 +349,22 @@ int main(void)
 
     //Calculate_FilteringCoefficient(0.0050000, 10.0000000);//计算accz的低通滤波器增益
 
-    LED_Init();//初始化结束咯,耗时10s
+    LED_Init();//初始化结束咯,over 0.01044ms
     LED0 = 1; //灭掉红灯
     LED1 = 0; //绿灯亮着，表示解锁不可以
 
-    erhaomiao = xitongshijian * 0.5f;
-    wuhaomiao = xitongshijian * 0.2f;
-    shihaomiao = xitongshijian * 0.1f;
-    ershihaomiao = xitongshijian * 0.05f;
-    wushihaomiao = xitongshijian * 0.02f;
-    yibaihaomiao = xitongshijian * 0.01f;
-    miaozhong = xitongshijian * 0.001f;
+    erhaomiao = xitongshijian * 0.05f;//noticing that we disorder the schedule before
+    wuhaomiao = xitongshijian * 0.02f;
+    shihaomiao = xitongshijian * 0.01f;
+    ershihaomiao = xitongshijian * 0.005f;
+    wushihaomiao = xitongshijian * 0.002f;
+    yibaihaomiao = xitongshijian * 0.001f;
+    miaozhong = xitongshijian * 0.0001f;
 
     //------------------------------初始化下界------------------------------
 
 
-    while(1)
+    while(1)//using 12s to get there
     {
         //-----------------------------控制与油门刷新上界----------------------------------------------
 
@@ -404,7 +400,7 @@ int main(void)
                 {
                     temp4 = 1507 - channel4_in;//想要的偏航为通道四中位差
                     desyaw = (float)temp4 * 0.0361446; //转换为正负15
-					desyaw=0;//我们暂时不想要手动控制yaw
+                    desyaw = 0; //我们暂时不想要手动控制yaw
 
                 }
                 else//通道四接收信号在工程意义中间
@@ -485,16 +481,16 @@ int main(void)
 
         //----------------------------非中断函数内部的周期性执行程序上界-----------------------------------
         //二毫秒函数上界
-        /*
-                if(xitongshijian * 0.5f > erhaomiao + 1)
-                {
-                    erhaomiao=xitongshijian*0.5f;//二毫秒一次,这根本不可能精确的啦
-                }
-        */
-        //二毫秒函数下界
-        if(xitongshijian * 0.2f > wuhaomiao + 1)
+
+        if(xitongshijian * 0.05f > erhaomiao + 1)
         {
-            wuhaomiao = xitongshijian * 0.2f; //每过五毫秒来这一次
+            erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
+        }
+
+        //二毫秒函数下界
+        if(xitongshijian * 0.02f > wuhaomiao + 1)
+        {
+            wuhaomiao = xitongshijian * 0.02f; //visiting by five milliseconds resolution
 
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //得到加速度传感器数据,耗时0.6ms
             {
@@ -505,12 +501,12 @@ int main(void)
                 //Accz_filter();//加速度计Z轴滑动窗口滤波
                 //ACC_IIR_Filter();//加计IIR低通滤波器,在5ms内运行10Hz滤波
                 Kalman_filter_accz();
-                accz_dt = (float)(xitongshijian - accz_temp_time) * 0.001;
-                accz_temp_time = xitongshijian;
-                acc_Climb += (accz_X_hat_minus - aacz_chushi) * 0.0005978 * accz_dt;
-				acc_Climb_out=acc_Climb-acc_Climb_err;
-				//Kalman_filter_accy();
-				//Kalman_filter_accx();
+                accz_dt = (float)(xitongshijian - accz_temp_time) * 0.001;//how much time between two visit
+                accz_temp_time = xitongshijian;//record the time
+                acc_Climb += (accz_X_hat_minus - aacz_chushi) * 0.0005978 * accz_dt;//accelerometer integral
+                acc_Climb_out = acc_Climb - acc_Climb_err; //error adjust by using baro derivative.
+                //Kalman_filter_accy();
+                //Kalman_filter_accx();
             }
 
             if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))  //得到陀螺仪数据,耗时0.6ms
@@ -531,9 +527,9 @@ int main(void)
 
         }
 
-        if(xitongshijian * 0.1f > shihaomiao + 1)
+        if(xitongshijian * 0.01f > shihaomiao + 1)
         {
-            shihaomiao = xitongshijian * 0.1f; //每过十毫秒来这一次
+            shihaomiao = xitongshijian * 0.01f; //visiting by ten milliseconds resolution
             mpu_dmp_get_data(&pitch, &roll, &yaw);//此句话消耗惊人的52ms,去掉50ms延迟后只需要2.1ms,这是mpu硬解姿态
             roll_err = roll - desroll; //得到roll角度误差
             pitch_err = pitch - despitch; //得到pitch角度误差
@@ -553,16 +549,16 @@ int main(void)
 
             //ANO_DT_Send_Senser(gyrox-gyrox_chushi, gyroy-gyroy_chushi, gyroz-gyroz_chushi, gyrox_out, gyroy_out, gyroz_out,gyrox_chushi,gyroy_chushi,gyroz_chushi,(s32)0);
         }
-        if(xitongshijian * 0.05f > ershihaomiao + 1)
+        if(xitongshijian * 0.005f > ershihaomiao + 1)
         {
-            ershihaomiao = xitongshijian * 0.05f; //每过二十毫秒来这一次
+            ershihaomiao = xitongshijian * 0.005f; //visiting by twenty milliseconds resolution
             //0.09*65536/4=1475(short为int16_t,65536代表正负2g)
             //desthrottle -= (int16_t)(0.03 * (float)(accz_out - aacz_chushi)); //当aacz大于初始时，说明飞机向上,油门应该减小,这个太恐怖了，伤到我了
             if(channel3_in > 1100)//只有油门大于1100时才允许更新油门和自动控制量
             {
                 cyberNation();//更新电机,经典50Hz更新法,over 0.06ms
-				//Altitude_hold_update();//定高叠加量
-				Sink_compensation();//油门补偿叠加量
+                //Altitude_hold_update();//定高叠加量
+                Sink_compensation();//油门补偿叠加量
                 Moto_Throttle(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数.核心二调用一
             }
 
@@ -604,13 +600,13 @@ int main(void)
 
         //----------------五十毫秒上界
 
-        if(xitongshijian * 0.02f > wushihaomiao + 1)
+        if(xitongshijian * 0.002f > wushihaomiao + 1)
         {
-            wushihaomiao = xitongshijian * 0.02f; //五十毫秒
-			//ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
-			
-			//debug[0]=cosf(roll*0.0174533);
-			
+            wushihaomiao = xitongshijian * 0.002f; //visiting by fifty milliseconds resolution
+            //ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
+
+            //debug[0]=cosf(roll*0.0174533);
+
             //ANO_DT_Send_Status(roll, pitch, yaw, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
             //ANO_DT_Send_Senser((s16)(979.0f*(cosf(roll* 0.0174533)*cosf(pitch* 0.0174533))), (s16)aacy* 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Altitude*100); //over 0.5ms
             //ANO_DT_Send_MotoPWM((u16) cNd1, (u16) cNd2, (u16) cNd3, (u16) cNd4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
@@ -624,34 +620,34 @@ int main(void)
         //---------------五十毫秒下界
 
         //---------------一百毫秒上界
-        if(xitongshijian * 0.01f > yibaihaomiao + 1)
+        if(xitongshijian * 0.001f > yibaihaomiao + 1)
         {
-            yibaihaomiao = xitongshijian * 0.01f; //一百毫秒来一次
+            yibaihaomiao = xitongshijian * 0.001f; //visit by hundred milliseconds resolution
             //MS561101BA_GetTemperature();//over 9.1ms
             MS561101BA_getPressure();//over 9.1ms
             Kalman_filter_pressure();
-            scaling = pressure_X_hat_minus / Pressure_chushi;
+            scaling = pressure_X_hat_minus / Pressure_chushi;//using to calculate the height
             MS561101BA_get_altitude();//0.02ms
             //Kalman_filter_alt();//0.01ms
             Altitude_dt = 0.001f * (float)(xitongshijian - Altitude_temp_time);
             Altitude_temp_time = xitongshijian;
             Kalman_filter_climb();
-			complementation_filter();//update acc_Climb_err
+            complementation_filter();//update acc_Climb_err
             //ANO_DT_Send_Senser(aacx-aacx_chushi, aacy-aacy_chushi, acc_Climb_X_hat_minus-aacz_chushi, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Pressure);
             //ANO_DT_Send_Status(MS5611_Altitude-Altitude_chushi, Altitude_X_hat_minus-Altitude_chushi, (Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
             //ANO_DT_Send_Status((Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, acc_Climb, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
 
             //ANO_DT_Send_Status(acc_Climb, acc_Climb_out, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0); //over 0.4ms
-			Altitude_minus=MS5611_Altitude;
+            Altitude_minus = MS5611_Altitude;
         }
         //---------------一百毫秒下界
 
 
         //----------------------一秒周期运行上界
 
-        if(xitongshijian * 0.001f > miaozhong + 1)
+        if(xitongshijian * 0.0001f > miaozhong + 1)
         {
-            miaozhong = xitongshijian * 0.001f; //每过一秒来这里一次
+            miaozhong = xitongshijian * 0.0001f; //visit by seconds resolution
             //printf("  TEMP =%.2f℃\r\n", (float)TEMP / 100.00);
             //printf("  MS5611_Pressure =%fmbar\r\n", MS5611_Pressure / 100);
             //printf("  MS5611_Altitude =%f\r\n", MS5611_Altitude-Altitude_chushi);
