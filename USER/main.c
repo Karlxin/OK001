@@ -3,45 +3,45 @@ Started at 2016
 Created by Karlxin(410824290@qq.com)
 Github:https://github.com/Karlxin/OK001.git
 OpenKarlCopter
-Version:dev_000
+Version:dev_001
 
 Notice:dev version created without experiment.If we want a stable version,we could go to github and
 checkout a test version or a stable version.
 
+features:more stable,more concise,more essential.
 
+PS:
+I am very grateful to Andrew Ng for the dreams of Artificial Intelligence and the open but valuable
+course of machine learning in Coursera.
 
+If you wanted experiments videos,please send emails to Karl with 410824290@qq.com.
 
+You time is valuable,please please please do not do the things waste your time!
 
+I hope some day we will meet each other with our dreams achieved.
 
+Good Luck!
 
-
-
-
-
-
-
-
-
-
+EL PSY CONGROO
 
 
 --------------------------------version information top-------------------------------------------*/
 
-#include "led.h"//灯头文件
-#include "delay.h"//延迟头文件
-#include "sys.h"//系统头文件
-#include "usart.h"//串口头文件
-#include "stm32f10x.h"//stm32f10板子头文件
-#include "moto.h"//控制电机用的头文件
-#include "timer.h"//定时器五和四的头文件,定时器五是系统开机总时间，定时器四是捕捉脉宽调制波的定时器
-#include "wdg.h"//看门狗头文件
-#include "pwm.h"//定时器3用来输出pwm
-#include "imu.h"//惯性测量单元
-#include "mpu6050.h"//陀螺仪加速度计
-#include "inv_mpu.h"//mpu的硬件配置以及读数相关头文件
-#include "inv_mpu_dmp_motion_driver.h"//mpu的硬件配置以及读数相关头文件
-#include "math.h"//核心数学函数库头文件
-#include <stdio.h>//带缓冲的标准输入输出
+#include "led.h"//light emitting diode head file 
+#include "delay.h"//delay head file
+#include "sys.h"//system head file
+#include "usart.h"//universal synchronous asynchronous receiver transmitter head file
+#include "stm32f10x.h"//stm32f10 controller head file
+#include "moto.h"//motor head file
+#include "timer.h"//timer 5 and 4 head file,timer 5 for system time,timer 4 for capture of pulse width modulation wave 
+#include "wdg.h"//watch dog head file
+#include "pwm.h"//timer 3 for output of pulse width modulation wave 
+#include "imu.h"//inertial measurement unit
+#include "mpu6050.h"//motion process unit with accelerometer and gyrometer
+#include "inv_mpu.h"//mpu hardware config and reading config head file
+#include "inv_mpu_dmp_motion_driver.h"//mpu hardware config and reading config head file
+#include "math.h"//math head file
+#include <stdio.h>//standard input output with buffer
 
 extern void TIM3_PWM_Init(u16 arr, u16 psc);
 extern void TIM4_Cap_Init(u16 arr, u16 psc);
@@ -671,5 +671,7 @@ int main(void)
     }
 }
 
+//little butterfly do not be afraid,the turbulence can save the world.
+//OORGNO CYSPLE
 
 
