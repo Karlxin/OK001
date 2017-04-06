@@ -247,12 +247,12 @@ float pressure_P = 40; //error variance
 extern void Kalman_filter_gyro(void);
 //float gyro_dt[3] = {0.01,0.01,0.01}; //the delta time
 //u32 gyro_temp_time = 0; //the record time
-float gyro_R[3] = {10, 10, 10}; //3sigma measurement variance
-float gyro_Q[3] = {0.0004, 0.0004, 0.0004}; //process Variance
+float gyro_R[3] = {1, 1, 1}; //3sigma measurement variance
+float gyro_Q[3] = {3965497, 991221, 6729}; //process Variance
 float gyro_K[3] = {0, 0, 0}; //kalman gain
 float gyro_X_hat[3] = {0, 0, 0}; //init predict
 float gyro_X_hat_minus[3] = {0, 0, 0}; //previous predict
-float gyro_P[3] = {40, 40, 40}; //error variance,6sigma
+float gyro_P[3] = {1, 1, 1}; //error variance,6sigma
 //---gyrometer kalman bottom
 
 extern void complementation_filter(void);
