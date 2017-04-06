@@ -60,6 +60,15 @@ extern u16 channel3_in;
 
 extern float Scd;
 
+extern float gyro_R[3];
+extern float gyro_Q[3];
+extern float gyro_K[3]; 
+extern float gyro_X_hat[3];
+extern float gyro_X_hat_minus[3];
+extern float gyro_P[3]; 
+extern short gyro[3];
+extern short gyro_chushi[3];
+
 //just constrain from right
 int16_t Constrain_up(int16_t throttle,int16_t max)
 {
@@ -147,9 +156,9 @@ void Gyro_filter(void)
 	int32_t Filter_sum_x=0,Filter_sum_y=0,Filter_sum_z=0;
 	uint8_t i;
 	
-	Filter_x[Filter_count]=gyrox-gyrox_chushi;
-	Filter_y[Filter_count]=gyroy-gyroy_chushi;
-	Filter_z[Filter_count]=gyroz-gyroz_chushi;
+	Filter_x[Filter_count]=gyro[0]-gyro_chushi[0];
+	Filter_y[Filter_count]=gyro[1]-gyro_chushi[1];
+	Filter_z[Filter_count]=gyro[2]-gyro_chushi[2];
 	
 	for(i=0;i<Filter_Num;i++)
 	{
@@ -296,6 +305,22 @@ void Sink_compensation(void)
 {
 	Scd=(channel3_in-1000)/(cosf(desroll* 0.0174533)*cosf(despitch* 0.0174533))-(channel3_in-1000);//cosine between EarthFrame_Z with BodyFrame_Z
 	Scd=0;//先测试以前的还能工作吗
+}
+
+void Kalman_filter_gyro(void)
+{
+	u8 i=0;
+	for(i=0;i<3;i++)
+	{
+	//time update
+	gyro_X_hat_minus[i]=gyro_X_hat[i];
+    gyro_P[i]=gyro_P[i]+gyro_Q[i];
+	
+	//predict update
+	gyro_K[i]=gyro_P[i]/(gyro_P[i]+gyro_R[i]);
+	gyro_X_hat[i]=gyro_X_hat_minus[i]+gyro_K[i]*(gyro[i]-gyro_chushi[i]-gyro_X_hat_minus[i]);
+	gyro_P[i]=(1-gyro_K[i])*gyro_P[i];
+	}
 }
 
 

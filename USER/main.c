@@ -78,11 +78,13 @@ u32 miaozhong = 0; //second resolution
 float roll, pitch, yaw;//Tait-Bryan angles φθψ,DMP hardware resolving ,roll,pitch,yaw
 short aacx, aacy, aacz;//accelerometer raw data
 short gyrox, gyroy, gyroz;//gyrometer raw data
+short gyro[3] = {0, 0, 0};
 short temp;//temperature
 short gyrox_chushi, gyroy_chushi, gyroz_chushi; //at the beginning we grab some data from gyrometer as the sensor zero offset
+short gyro_chushi[3] = {0, 0, 0};
 float temp_gyxc = 0, temp_gyyc = 0, temp_gyzc = 0; //the temp for gyrometer offset,use average filter
-short aacx_chushi, aacy_chushi, aacz_chushi; 
-float temp_axc = 0, temp_ayc = 0, temp_azc = 0; 
+short aacx_chushi, aacy_chushi, aacz_chushi;
+float temp_axc = 0, temp_ayc = 0, temp_azc = 0;
 
 int16_t deadzone = 20; //remote controller deadzone
 
@@ -107,7 +109,7 @@ float roll_err, pitch_err, yaw_err;//error,roll_err=roll-desroll,desroll is the 
 float desroll, despitch, desyaw;//expectation
 
 short gyrox_out, gyroy_out, gyroz_out;//after sliding windows filter
-short accz_out;//after 
+short accz_out;//after
 
 extern void Gyro_filter(void);
 extern void ANO_DT_Send_RCData(u16 thr, u16 yaw, u16 rol, u16 pit, u16 aux1, u16 aux2, u16 aux3, u16 aux4, u16 aux5, u16 aux6);
@@ -241,14 +243,26 @@ float pressure_X_hat_minus = 0; //previous predict
 float pressure_P = 40; //error variance
 //---pressure kalman bottom
 
+//---gyrometer kalman top
+extern void Kalman_filter_gyro(void);
+//float gyro_dt[3] = {0.01,0.01,0.01}; //the delta time
+//u32 gyro_temp_time = 0; //the record time
+float gyro_R[3] = {10, 10, 10}; //3sigma measurement variance
+float gyro_Q[3] = {0.0004, 0.0004, 0.0004}; //process Variance
+float gyro_K[3] = {0, 0, 0}; //kalman gain
+float gyro_X_hat[3] = {0, 0, 0}; //init predict
+float gyro_X_hat_minus[3] = {0, 0, 0}; //previous predict
+float gyro_P[3] = {40, 40, 40}; //error variance,6sigma
+//---gyrometer kalman bottom
+
 extern void complementation_filter(void);
 
-float Ahd = 0; //altitude hold throttle offset 
+float Ahd = 0; //altitude hold throttle offset
 
 extern void Sink_compensation(void);//sink update
 float Scd = 0; //sink throttle offset
 
-u32 debug[10]={0,0,0,0,0,0,0,0,0,0};//time pin,to observe the real frequency.
+u32 debug[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //time pin,to observe the real frequency.
 
 //deviation between 0.1ms，little boy do not be afraid
 
@@ -262,6 +276,7 @@ int main(void)
     u8 i;//for for loop
     u8 USART1_Open = 0;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
+    u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0，1，2，3；subclass by 0,1(2:0),over 0.0004ms
@@ -305,7 +320,7 @@ int main(void)
 
     //record the data of gyrometer averaged by 2 using 3s
     gyxt = xitongshijian; //record the system time,over 0.00172ms
-    while(xitongshijian * 0.001f < gyxt * 0.001f + 3) 
+    while(xitongshijian * 0.001f < gyxt * 0.001f + 3)
     {
         if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))//get gyrometer raw data
         {
@@ -322,9 +337,9 @@ int main(void)
             Kalman_filter_accz();//call the Kalman filter
         }
     }//over 3s
-    gyrox_chushi = (short)temp_gyxc;//record the initial data,over 0.00211ms
-    gyroy_chushi = (short)temp_gyyc;
-    gyroz_chushi = (short)temp_gyzc;
+    gyro_chushi[0] = (short)temp_gyxc;//record the initial data,over 0.00211ms
+    gyro_chushi[1] = (short)temp_gyyc;
+    gyro_chushi[2] = (short)temp_gyzc;
 
     aacx_chushi = (short)temp_axc;
     aacy_chushi = (short)temp_ayc;
@@ -386,8 +401,8 @@ int main(void)
         if(xitongshijian * 0.1f > haomiao + 1)
         {
             haomiao = xitongshijian * 0.1f;
-			debug[0]++;
-			
+            debug[0]++;
+
             //read MPU top
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //get acc data,over 0.6ms
             {
@@ -400,9 +415,16 @@ int main(void)
                 //Kalman_filter_accx();
             }
 
-            if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))  //get gyro data,over 0.6ms
+            if(!MPU_Get_Gyroscope(&gyro[0], &gyro[1], &gyro[2]))  //get gyro data,over 0.6ms
             {
                 Gyro_filter();//sliding window filter,over 0.02ms
+                if(kalman_gyro_Open)
+                {
+                    Kalman_filter_gyro();
+                    gyrox_out = gyro_X_hat_minus[0];
+                    gyroy_out = gyro_X_hat_minus[1];
+                    gyroz_out = gyro_X_hat_minus[2];
+                }
             }
             //read MPU bottom
         }
@@ -412,7 +434,7 @@ int main(void)
         if(xitongshijian * 0.05f > erhaomiao + 1)
         {
             erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
-			debug[1]++;
+            debug[1]++;
         }
         //two ms bottom
 
@@ -420,7 +442,7 @@ int main(void)
         if(xitongshijian * 0.02f > wuhaomiao + 1)
         {
             wuhaomiao = xitongshijian * 0.02f; //visiting by five milliseconds resolution
-			debug[2]++;
+            debug[2]++;
             mpu_dmp_get_data(&pitch, &roll, &yaw);//over amazing 52ms,move 50ms delay and we got 2.1ms,use dmp hardware
             roll_err = roll - desroll; //get roll_err
             pitch_err = pitch - despitch;
@@ -433,8 +455,8 @@ int main(void)
         if(xitongshijian * 0.01f > shihaomiao + 1)
         {
             shihaomiao = xitongshijian * 0.01f; //visiting by ten milliseconds resolution
-			debug[3]++;
-			
+            debug[3]++;
+
 
             //0.09*65536/4=1475(short为int16_t,65536 presentation for ±2g)
             //desthrottle -= (int16_t)(0.03 * (float)(accz_out - aacz_chushi)); //当aacz大于初始时，说明飞机向上,油门应该减小,这个太恐怖了，伤到我了
@@ -448,7 +470,7 @@ int main(void)
 
                     if(channel1_in < 1507 - deadzone || channel1_in > 1507 + deadzone)//channel1 is not in deadzone ,over 0.01558ms
                     {
-                        temp1 =  channel1_in - 1507 ; 
+                        temp1 =  channel1_in - 1507 ;
                         desroll = (float)temp1 * 0.0361446; //covert to ±15°
 
                     }
@@ -460,7 +482,7 @@ int main(void)
                     if(channel2_in < 1508 - deadzone || channel2_in > 1508 + deadzone)
                     {
                         temp2 = 1508 - channel2_in;
-                        despitch = (float)temp2 * 0.0361446; 
+                        despitch = (float)temp2 * 0.0361446;
 
                     }
                     else//channel2 is in deadzone
@@ -471,7 +493,7 @@ int main(void)
                     if(channel4_in < 1507 - deadzone || channel4_in > 1507 + deadzone)
                     {
                         temp4 = 1507 - channel4_in;
-                        desyaw = (float)temp4 * 0.0361446; 
+                        desyaw = (float)temp4 * 0.0361446;
                         desyaw = 0; //we just do not control yaw temporarily
 
                     }
@@ -530,7 +552,7 @@ int main(void)
                 }
             }
 
-            if(channel3_in > 1100)//只有油门大于1100时才允许更新油门和自动控制量
+            if(channel3_in > 1100)//only when channel3 >1100 will update motor controlling
             {
                 cyberNation();//update motor,over 0.06ms
                 //Altitude_hold_update();//altitude holding superposition
@@ -546,7 +568,7 @@ int main(void)
         if(xitongshijian * 0.005f > ershihaomiao + 1)
         {
             ershihaomiao = xitongshijian * 0.005f; //visiting by twenty milliseconds resolution
-			debug[4]++;
+            debug[4]++;
         }
         //twenty ms bottom
 
@@ -560,10 +582,13 @@ int main(void)
             if(USART1_Open)
             {
                 ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
-                //ANO_DT_Send_Senser((s16)aacx * 0.05978, (s16)aacy * 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)Scd, (s16)Ahd, (s16)0, (s32)MS5611_Altitude * 100); //over 0.5ms
                 ANO_DT_Send_MotoPWM((u16) cNd1, (u16) cNd2, (u16) cNd3, (u16) cNd4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
+                //ANO_DT_Send_Senser((s16)aacx,(s16)aacy,(s16)aacz,(s16)gyro_X_hat_minus[0],(s16)gyro_X_hat_minus[1],(s16)gyro_X_hat_minus[2],(s16)gyro[0]-gyro_chushi[0],(s16)gyro[1]-gyro_chushi[1],(s16)gyro[2]-gyro_chushi[2],(s32) MS5611_Pressure);
 
+                ANO_DT_Send_Senser((s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)gyro_X_hat_minus[0], (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyro[0] - gyro_chushi[0], (s16)gyro[1] - gyro_chushi[1], (s16)gyro[2] - gyro_chushi[2], (s32) MS5611_Pressure);
+
+                //ANO_DT_Send_Senser((s16)aacx * 0.05978, (s16)aacy * 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)Scd, (s16)Ahd, (s16)0, (s32)MS5611_Altitude * 100); //over 0.5ms
                 //ANO_DT_Send_Senser(accx_X_hat_minus, accy_X_hat_minus, accz_X_hat_minus, gyrox_out, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
                 //ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
                 //ANO_DT_Send_Senser((s16)channel1_in, (s16)channel2_in, (s16)channel3_in, (s16)channel4_in, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
@@ -581,8 +606,8 @@ int main(void)
         if(xitongshijian * 0.001f > yibaihaomiao + 1)
         {
             yibaihaomiao = xitongshijian * 0.001f; //visit by hundred milliseconds resolution
-			 debug[6]++;
-			
+            debug[6]++;
+
             //MS561101BA_GetTemperature();//over 9.1ms
             MS561101BA_getPressure();//over 9.1ms
             Kalman_filter_pressure();
@@ -606,9 +631,9 @@ int main(void)
         if(xitongshijian * 0.0001f > miaozhong + 1)
         {
             miaozhong = xitongshijian * 0.0001f; //visit by seconds resolution
-			debug[7]++;
-			
-			
+            debug[7]++;
+
+
             //printf("  TEMP =%.2f℃\r\n", (float)TEMP / 100.00);
             //printf("  MS5611_Pressure =%fmbar\r\n", MS5611_Pressure / 100);
             //printf("  MS5611_Altitude =%f\r\n", MS5611_Altitude-Altitude_chushi);
