@@ -1,17 +1,19 @@
-1.目标:	
+1.Target:	
 	
-2.实现：
+2.realizing：
 
-3.问题：
+3.problem：
 
-4.原因：
+4.reason：
 
-5.尝试：
+5.todo：
 
-6.现象: 1.rearrange schedule,this must be the key,vedio:20170406_102028.mp4
+6.phenomenon: 
+		1.rearrange schedule,this must be the key,video:20170406_102028.mp4
+		2.Nothing changed.video:20170406_131328.mp4
+		3.arranged.some oscillation exist.video:20170406_140855.mp4
+7.solutions: 
 
-7.解决: 
+8.exception:
 
-8.异常:
-
-PS:    
+postscript:    

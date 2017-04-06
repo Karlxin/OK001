@@ -2,27 +2,16 @@
 #include "stm32f10x.h"
 #include "delay.h"
 #include "math.h"
-//////////////////////////////////////////////////////////////////////////////////
-//本程序只供学习使用，未经作者许可，不得用于其它任何用途
-//ALIENTEK Mini STM32开发板
-//PWM  驱动代码
-//正点原子@ALIENTEK
-//技术论坛:www.openedv.com
-//修改日期:2010/12/03
-//版本：V1.0
-//版权所有，盗版必究。
-//Copyright(C) 正点原子 2009-2019
-//All rights reserved
-//////////////////////////////////////////////////////////////////////////////////
+
 int16_t MOTO1_PWM = 0;
 int16_t MOTO2_PWM = 0;
 int16_t MOTO3_PWM = 0;
 int16_t MOTO4_PWM = 0;
 
 extern int16_t cNd1, cNd2, cNd3, cNd4;
-extern float roll, pitch, yaw; 		//欧拉角,DMP硬解得到的角度,roll -180~180 pitch -90~90 yaw -180~180
-extern short gyrox, gyroy, gyroz;	//陀螺仪原始数据-32768~32767
-extern short gyrox_chushi,gyroy_chushi,gyroz_chushi;//陀螺仪最开始放在地面时候的一些数据
+extern float roll, pitch, yaw; 		//roll -180~180 pitch -90~90 yaw -180~180
+extern short gyrox, gyroy, gyroz;	//-32768~32767
+extern short gyrox_chushi,gyroy_chushi,gyroz_chushi;
 
 extern float ACC_IIR_FACTOR;
 
@@ -39,8 +28,8 @@ extern float ACC_IIR_FACTOR;
 /*static float kp_theta_x = 1.6666667, kp_theta_y = 3.3333333, kp_theta_z = 0;
 static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007629;*/
 
-//PD控制器调试上端
-//各种调试，PD控制器
+//PD controller top
+//Test PD controller
 //角度预估在15度以内,故让角度控制的油门为15*4=60
 //角速度暂时没有估计,暂时估计在10000以内
 //32767*0.03=900
@@ -57,13 +46,7 @@ float KP_VEL_Z=5*0.5443658;
 float KP_ACC_Z=0.5*0.5443658;
 float kp_vel_Z=5*0.5443658;
 float kp_acc_Z=0.5*0.5443658;
-//PD控制器调试下端
-
-extern float rjz,pjz,yjz;//将cNd1等数据分别转换为roll,pitch,yaw方向的纠正量，以便示波观察
-
-extern u8 roll_in_flag;//绕X轴有有效遥控信号输入则为1，否则为0
-extern u8 pitch_in_flag;
-extern u8 yaw_in_flag;
+//PD controller bottom
 
 extern float roll_err, pitch_err, yaw_err;//误差值,roll_err=roll-desroll,其中desroll为遥控信号线性映射的角度值
 extern float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
@@ -77,6 +60,7 @@ extern u16 channel3_in;
 
 extern float Scd;
 
+//just constrain from right
 int16_t Constrain_up(int16_t throttle,int16_t max)
 {
 	if(throttle>max)
@@ -86,6 +70,7 @@ int16_t Constrain_up(int16_t throttle,int16_t max)
 	return throttle;
 }
 
+//constrain both side
 int16_t Constrain(int16_t throttle,int16_t max,int16_t min)
 {
 	if((min<throttle)&&(throttle<max))
@@ -103,7 +88,7 @@ int16_t Constrain(int16_t throttle,int16_t max,int16_t min)
 }
 
 
-//此函数直接控制电机.核心一
+//directive controller motor ,core 1
 void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int16_t MOTO4_PWM)
 {
 
@@ -122,7 +107,7 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
     TIM3->CCR4 = MOTO4_PWM;
 }
 
-//此函数输入遥控油门pwm信号,内部会结合自动控制量并调用最底层油门函数.核心二
+//core 2
 void Moto_Throttle(int16_t desthrottle)
 {
     int16_t d1, d2, d3, d4;
@@ -131,7 +116,7 @@ void Moto_Throttle(int16_t desthrottle)
     d3 = Constrain_up(desthrottle,1780)+Constrain(cNd3,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //                   *              |                <=======
     d4 = Constrain_up(desthrottle,1780)+Constrain(cNd4,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //      	    CCW2    4CW         |
 
-    Moto_PwmRflash(d1, d2, d3, d4);//此函数是最终改变油门的函数,核心一调用三
+    Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }
 
 float sfabs(float a)//单精度绝对值函数
@@ -144,37 +129,17 @@ float sfabs(float a)//单精度绝对值函数
 	return -a;
 }
 
-float chuli(float a)//当a小于1时，返回1，当a大于等于1时，返回1/a
-{
-	if(a<1)
-	{
-		return 1;
-	}
-	return 1/a;
-}
 
-//此函数将角度和角速度值处理后转换为自动控制量,此些量会传递给核心二使用.核心三
+//cybernation offset.core 3
 void cyberNation(void)
 {
-	//kp_omega_x=KP_OMEGA_X*chuli(sfabs(roll_err));//误差越多，放弃越多的角速度锁,1/15=0.06666666666666
-	//kp_omega_y=KP_OMEGA_Y*chuli(sfabs(pitch_err));
-	
 	cNd1 = +roll_err * kp_theta_x + pitch_err * kp_theta_y + yaw_err * kp_theta_z + gyrox_out * kp_omega_x + gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
     cNd2 = -roll_err * kp_theta_x - pitch_err * kp_theta_y + yaw_err * kp_theta_z - gyrox_out * kp_omega_x - gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
     cNd3 = -roll_err * kp_theta_x + pitch_err * kp_theta_y - yaw_err * kp_theta_z - gyrox_out * kp_omega_x + gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
     cNd4 = +roll_err * kp_theta_x - pitch_err * kp_theta_y - yaw_err * kp_theta_z + gyrox_out * kp_omega_x - gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
-	
 }
 
-//此函数将cNd1~cNd4电机单个纠正量转化为roll,pitch,yaw方向的纠正量
-void cN2rpy(void)
-{
-	rjz=-cNd1+cNd2+cNd3-cNd4;
-	pjz=-cNd1+cNd2-cNd3+cNd4;
-	yjz=-cNd1-cNd2+cNd3+cNd4;
-}
-
-#define Filter_Num 6//六值平均，陀螺仪原始数据滑动窗口滤波
+#define Filter_Num 6//sliding window with 6 values
 void Gyro_filter(void)
 {
 	static short Filter_x[Filter_Num],Filter_y[Filter_Num],Filter_z[Filter_Num];
@@ -205,7 +170,7 @@ void Gyro_filter(void)
 	}
 }
 
-#define Filter_Num2 6//六值平均,加速度计Z轴滑动窗口滤波
+#define Filter_Num2 6//sliding window with 6 values
 void Accz_filter(void)
 {
 	static short Filter_accz[Filter_Num2];
