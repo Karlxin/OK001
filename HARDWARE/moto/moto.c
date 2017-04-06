@@ -8,12 +8,19 @@ int16_t MOTO2_PWM = 0;
 int16_t MOTO3_PWM = 0;
 int16_t MOTO4_PWM = 0;
 
-extern int16_t cNd1, cNd2, cNd3, cNd4;
+extern int16_t cNd1_theta, cNd2_theta, cNd3_theta, cNd4_theta;
+extern int16_t cNd1_omega, cNd2_omega, cNd3_omega, cNd4_omega;
+extern int16_t cNd1_alpha, cNd2_alpha, cNd3_alpha, cNd4_alpha;
+
 extern float roll, pitch, yaw; 		//roll -180~180 pitch -90~90 yaw -180~180
 extern short gyrox, gyroy, gyroz;	//-32768~32767
-extern short gyrox_chushi,gyroy_chushi,gyroz_chushi;
+extern short gyrox_chushi, gyroy_chushi, gyroz_chushi;
 
 extern float ACC_IIR_FACTOR;
+
+extern int16_t d1, d2, d3, d4;
+
+extern float alphax, alphay, alphaz;
 
 //roll:-180~180 pitch:-90:90 yaw:-180:180
 //omegaroll:omegapitch:omegayaw:-32768:32767
@@ -36,22 +43,24 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //10000*0.03=300
 //角速度转换为角度再输入进来，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
 float KP_THETA_X = 3.5, KP_THETA_Y = 3.5, KP_THETA_Z = 3.5;//常量
-float KP_OMEGA_X = 0.7*0.0610370, KP_OMEGA_Y = 0.6*0.0610370, KP_OMEGA_Z = 0.8*0.0610370;//常量
+float KP_OMEGA_X = 0.7 * 0.0610370, KP_OMEGA_Y = 0.6 * 0.0610370, KP_OMEGA_Z = 0.8 * 0.0610370; //常量
+float KP_ALPHA_X = 0.05 * 0.0610370, KP_ALPHA_Y = 0.05 * 0.0610370, KP_ALPHA_Z = 0 * 0.0610370;
 float kp_theta_x = 3.5, kp_theta_y = 3.5, kp_theta_z = 3.5;//变量
-float kp_omega_x = 0.7*0.0610370, kp_omega_y = 0.6*0.0610370, kp_omega_z = 0.8*0.0610370;//变量
+float kp_omega_x = 0.7 * 0.0610370, kp_omega_y = 0.6 * 0.0610370, kp_omega_z = 0.8 * 0.0610370; //变量
+float kp_alpha_x = 0.05 * 0.0610370, kp_alpha_y = 0.05 * 0.0610370, kp_alpha_z = 0 * 0.0610370;
 //6*130=780;
 //0.5*1000=500;
-//consideration of mass of 1837g for MATLAB theory 
-float KP_VEL_Z=5*0.5443658;
-float KP_ACC_Z=0.5*0.5443658;
-float kp_vel_Z=5*0.5443658;
-float kp_acc_Z=0.5*0.5443658;
+//consideration of mass of 1837g for MATLAB theory
+float KP_VEL_Z = 5 * 0.5443658;
+float KP_ACC_Z = 0.5 * 0.5443658;
+float kp_vel_Z = 5 * 0.5443658;
+float kp_acc_Z = 0.5 * 0.5443658;
 //PD controller bottom
 
 extern float roll_err, pitch_err, yaw_err;//误差值,roll_err=roll-desroll,其中desroll为遥控信号线性映射的角度值
 extern float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
 
-extern short gyrox_out,gyroy_out,gyroz_out;
+extern short gyrox_out, gyroy_out, gyroz_out;
 extern short aacx, aacy, aacz;     //加速度传感器原始数据
 extern short accz_out;
 
@@ -62,38 +71,38 @@ extern float Scd;
 
 extern float gyro_R[3];
 extern float gyro_Q[3];
-extern float gyro_K[3]; 
+extern float gyro_K[3];
 extern float gyro_X_hat[3];
 extern float gyro_X_hat_minus[3];
-extern float gyro_P[3]; 
+extern float gyro_P[3];
 extern short gyro[3];
 extern short gyro_chushi[3];
 
 //just constrain from right
-int16_t Constrain_up(int16_t throttle,int16_t max)
+int16_t Constrain_up(int16_t throttle, int16_t max)
 {
-	if(throttle>max)
-	{
-		return max;
-	}
-	return throttle;
+    if(throttle > max)
+    {
+        return max;
+    }
+    return throttle;
 }
 
 //constrain both side
-int16_t Constrain(int16_t throttle,int16_t max,int16_t min)
+int16_t Constrain(int16_t throttle, int16_t max, int16_t min)
 {
-	if((min<throttle)&&(throttle<max))
-	{
-		return throttle;
-	}
-	else
-	{
-		if(max<=throttle)
-		{
-			return max;
-		}
-	}
-	return min;
+    if((min < throttle) && (throttle < max))
+    {
+        return throttle;
+    }
+    else
+    {
+        if(max <= throttle)
+        {
+            return max;
+        }
+    }
+    return min;
 }
 
 
@@ -119,107 +128,112 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 //core 2
 void Moto_Throttle(int16_t desthrottle)
 {
-    int16_t d1, d2, d3, d4;
-    d1 = Constrain_up(desthrottle,1780)+Constrain(cNd1,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //              CW3     1CCW	   / \				 
-    d2 = Constrain_up(desthrottle,1780)+Constrain(cNd2,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //  俯视图          * *           / | \ X轴      	  Y轴
-    d3 = Constrain_up(desthrottle,1780)+Constrain(cNd3,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //                   *              |                <=======
-    d4 = Constrain_up(desthrottle,1780)+Constrain(cNd4,300,-300)+Constrain((int16_t)Ahd,30,-30)+Constrain((int16_t)Scd,30,-30); //      	    CCW2    4CW         |
+
+    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 50, -50) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //              CW3     1CCW	   / \				 
+    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 50, -50) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //  俯视图          * *           / | \ X轴      	  Y轴
+    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 50, -50) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 50, -50) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //      	    CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }
 
-float sfabs(float a)//单精度绝对值函数
+//cybernation offset.core 3
+void cyberNation_theta(void)
 {
-	if(a>0.0000000)
-	{
-		return a;
-	}
-		
-	return -a;
+    cNd1_theta = +roll_err * kp_theta_x + pitch_err * kp_theta_y + yaw_err * kp_theta_z ;
+    cNd2_theta = -roll_err * kp_theta_x - pitch_err * kp_theta_y + yaw_err * kp_theta_z;
+    cNd3_theta = -roll_err * kp_theta_x + pitch_err * kp_theta_y - yaw_err * kp_theta_z;
+    cNd4_theta = +roll_err * kp_theta_x - pitch_err * kp_theta_y - yaw_err * kp_theta_z;
 }
 
-
-//cybernation offset.core 3
-void cyberNation(void)
+void cyberNation_omega(void)
 {
-	cNd1 = +roll_err * kp_theta_x + pitch_err * kp_theta_y + yaw_err * kp_theta_z + gyrox_out * kp_omega_x + gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
-    cNd2 = -roll_err * kp_theta_x - pitch_err * kp_theta_y + yaw_err * kp_theta_z - gyrox_out * kp_omega_x - gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
-    cNd3 = -roll_err * kp_theta_x + pitch_err * kp_theta_y - yaw_err * kp_theta_z - gyrox_out * kp_omega_x + gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
-    cNd4 = +roll_err * kp_theta_x - pitch_err * kp_theta_y - yaw_err * kp_theta_z + gyrox_out * kp_omega_x - gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
+    cNd1_omega = +gyrox_out * kp_omega_x + gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
+    cNd2_omega = -gyrox_out * kp_omega_x - gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
+    cNd3_omega = -gyrox_out * kp_omega_x + gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
+    cNd4_omega = +gyrox_out * kp_omega_x - gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
+}
+
+void cyberNation_alpha(void)
+{
+    cNd1_alpha = +alphax * kp_alpha_x + alphay * kp_alpha_y + alphaz * kp_alpha_z;
+    cNd2_alpha = -alphax * kp_alpha_x - alphay * kp_alpha_y + alphaz * kp_alpha_z;
+    cNd3_alpha = -alphax * kp_alpha_x + alphay * kp_alpha_y - alphaz * kp_alpha_z;
+    cNd4_alpha = +alphax * kp_alpha_x - alphay * kp_alpha_y - alphaz * kp_alpha_z;
 }
 
 #define Filter_Num 6//sliding window with 6 values
 void Gyro_filter(void)
 {
-	static short Filter_x[Filter_Num],Filter_y[Filter_Num],Filter_z[Filter_Num];
-	static uint8_t Filter_count;
-	int32_t Filter_sum_x=0,Filter_sum_y=0,Filter_sum_z=0;
-	uint8_t i;
-	
-	Filter_x[Filter_count]=gyro[0]-gyro_chushi[0];
-	Filter_y[Filter_count]=gyro[1]-gyro_chushi[1];
-	Filter_z[Filter_count]=gyro[2]-gyro_chushi[2];
-	
-	for(i=0;i<Filter_Num;i++)
-	{
-		Filter_sum_x+=Filter_x[i];
-		Filter_sum_y+=Filter_y[i];
-		Filter_sum_z+=Filter_z[i];
-	}
-	
-	gyrox_out=Filter_sum_x/Filter_Num;
-	gyroy_out=Filter_sum_y/Filter_Num;
-	gyroz_out=Filter_sum_z/Filter_Num;
-	
-	Filter_count++;
-	
-	if(Filter_count==Filter_Num)
-	{
-		Filter_count=0;
-	}
+    static short Filter_x[Filter_Num], Filter_y[Filter_Num], Filter_z[Filter_Num];
+    static uint8_t Filter_count;
+    int32_t Filter_sum_x = 0, Filter_sum_y = 0, Filter_sum_z = 0;
+    uint8_t i;
+
+    Filter_x[Filter_count] = gyro[0] - gyro_chushi[0];
+    Filter_y[Filter_count] = gyro[1] - gyro_chushi[1];
+    Filter_z[Filter_count] = gyro[2] - gyro_chushi[2];
+
+    for(i = 0; i < Filter_Num; i++)
+    {
+        Filter_sum_x += Filter_x[i];
+        Filter_sum_y += Filter_y[i];
+        Filter_sum_z += Filter_z[i];
+    }
+
+    gyrox_out = Filter_sum_x / Filter_Num;
+    gyroy_out = Filter_sum_y / Filter_Num;
+    gyroz_out = Filter_sum_z / Filter_Num;
+
+    Filter_count++;
+
+    if(Filter_count == Filter_Num)
+    {
+        Filter_count = 0;
+    }
 }
 
 #define Filter_Num2 6//sliding window with 6 values
 void Accz_filter(void)
 {
-	static short Filter_accz[Filter_Num2];
-	static uint8_t Filter_count2;
-	int32_t Filter_sum_accz=0;
-	uint8_t i;
-	
-	Filter_accz[Filter_count2]=aacz;
-	
-	for(i=0;i<Filter_Num;i++)
-	{
-		Filter_sum_accz+=Filter_accz[i];
-	}
-	
-	accz_out=Filter_sum_accz/Filter_Num;
-	
-	Filter_count2++;
-	
-	if(Filter_count2==Filter_Num2)
-	{
-		Filter_count2=0;
-	}
+    static short Filter_accz[Filter_Num2];
+    static uint8_t Filter_count2;
+    int32_t Filter_sum_accz = 0;
+    uint8_t i;
+
+    Filter_accz[Filter_count2] = aacz;
+
+    for(i = 0; i < Filter_Num; i++)
+    {
+        Filter_sum_accz += Filter_accz[i];
+    }
+
+    accz_out = Filter_sum_accz / Filter_Num;
+
+    Filter_count2++;
+
+    if(Filter_count2 == Filter_Num2)
+    {
+        Filter_count2 = 0;
+    }
 }
 
 /******************************************************************************
 函数原型：	void Calculate_FilteringCoefficient(float Time, float Cut_Off)
 功    能：	iir低通滤波参数计算
-*******************************************************************************/ 
+*******************************************************************************/
 void Calculate_FilteringCoefficient(float Time, float Cut_Off)
 {
-	ACC_IIR_FACTOR = Time /( Time + 1/(2.0f*3.1415927*Cut_Off) );
+    ACC_IIR_FACTOR = Time / ( Time + 1 / (2.0f * 3.1415927 * Cut_Off) );
 }
 
 /******************************************************************************
 函数原型：	void ACC_IIR_Filter(struct _acc *Acc_in,struct _acc *Acc_out)
 功    能：	iir低通滤波
-*******************************************************************************/ 
+*******************************************************************************/
 void ACC_IIR_Filter(void)
 {
-	accz_out = accz_out + ACC_IIR_FACTOR*(aacz - accz_out); 
+    accz_out = accz_out + ACC_IIR_FACTOR * (aacz - accz_out);
 }
 
 extern float accz_R;
@@ -232,18 +246,15 @@ extern float accz_P;
 //this function use kalman filter to filt accz
 void Kalman_filter_accz(void)
 {
-	//time update
-	accz_X_hat_minus=accz_X_hat;
-    accz_P=accz_P+accz_Q;
-	
-	//predict update
-	accz_K=accz_P/(accz_P+accz_R);
-	accz_X_hat=accz_X_hat_minus+accz_K*(aacz-accz_X_hat_minus);
-	accz_P=(1-accz_K)*accz_P;
+    //time update
+    accz_X_hat_minus = accz_X_hat;
+    accz_P = accz_P + accz_Q;
+
+    //predict update
+    accz_K = accz_P / (accz_P + accz_R);
+    accz_X_hat = accz_X_hat_minus + accz_K * (aacz - accz_X_hat_minus);
+    accz_P = (1 - accz_K) * accz_P;
 }
-
-
-
 
 extern float accy_R;
 extern float accy_Q;
@@ -255,14 +266,14 @@ extern float accy_P;
 //this function use kalman filter to filt accy
 void Kalman_filter_accy(void)
 {
-	//time update
-	accy_X_hat_minus=accy_X_hat;
-    accy_P=accy_P+accy_Q;
-	
-	//predict update
-	accy_K=accy_P/(accy_P+accy_R);
-	accy_X_hat=accy_X_hat_minus+accy_K*(aacy-accy_X_hat_minus);
-	accy_P=(1-accy_K)*accy_P;
+    //time update
+    accy_X_hat_minus = accy_X_hat;
+    accy_P = accy_P + accy_Q;
+
+    //predict update
+    accy_K = accy_P / (accy_P + accy_R);
+    accy_X_hat = accy_X_hat_minus + accy_K * (aacy - accy_X_hat_minus);
+    accy_P = (1 - accy_K) * accy_P;
 }
 
 extern float accx_R;
@@ -275,14 +286,14 @@ extern float accx_P;
 //this function use kalman filter to filt accx
 void Kalman_filter_accx(void)
 {
-	//time update
-	accx_X_hat_minus=accx_X_hat;
-    accx_P=accx_P+accx_Q;
-	
-	//predict update
-	accx_K=accx_P/(accx_P+accx_R);
-	accx_X_hat=accx_X_hat_minus+accx_K*(aacx-accx_X_hat_minus);
-	accx_P=(1-accx_K)*accx_P;
+    //time update
+    accx_X_hat_minus = accx_X_hat;
+    accx_P = accx_P + accx_Q;
+
+    //predict update
+    accx_K = accx_P / (accx_P + accx_R);
+    accx_X_hat = accx_X_hat_minus + accx_K * (aacx - accx_X_hat_minus);
+    accx_P = (1 - accx_K) * accx_P;
 }
 
 
@@ -291,36 +302,35 @@ extern short aacz_chushi;
 
 void Altitude_hold_update(void)
 {
-	if(1500<channel3_in<1550)
-	{
-	Ahd=-kp_vel_Z*acc_Climb_out-kp_acc_Z*(accz_X_hat_minus - (float)aacz_chushi);
-	Ahd=0;//暂时不要这个补偿
-	}
-	Ahd=0;//防止意外的发生嘛
+    if(1500 < channel3_in < 1550)
+    {
+        Ahd = -kp_vel_Z * acc_Climb_out - kp_acc_Z * (accz_X_hat_minus - (float)aacz_chushi);
+        Ahd = 0; //暂时不要这个补偿
+    }
+    Ahd = 0; //防止意外的发生嘛
 }
-
 
 //degree to radian by multiplier 0.0174533
 void Sink_compensation(void)
 {
-	Scd=(channel3_in-1000)/(cosf(desroll* 0.0174533)*cosf(despitch* 0.0174533))-(channel3_in-1000);//cosine between EarthFrame_Z with BodyFrame_Z
-	Scd=0;//先测试以前的还能工作吗
+    Scd = (channel3_in - 1000) / (cosf(desroll * 0.0174533) * cosf(despitch * 0.0174533)) - (channel3_in - 1000); //cosine between EarthFrame_Z with BodyFrame_Z
+    Scd = 0; //先测试以前的还能工作吗
 }
 
 void Kalman_filter_gyro(void)
 {
-	u8 i=0;
-	for(i=0;i<3;i++)
-	{
-	//time update
-	gyro_X_hat_minus[i]=gyro_X_hat[i];
-    gyro_P[i]=gyro_P[i]+gyro_Q[i];
-	
-	//predict update
-	gyro_K[i]=gyro_P[i]/(gyro_P[i]+gyro_R[i]);
-	gyro_X_hat[i]=gyro_X_hat_minus[i]+gyro_K[i]*(gyro[i]-gyro_chushi[i]-gyro_X_hat_minus[i]);
-	gyro_P[i]=(1-gyro_K[i])*gyro_P[i];
-	}
+    u8 i = 0;
+    for(i = 0; i < 3; i++)
+    {
+        //time update
+        gyro_X_hat_minus[i] = gyro_X_hat[i];
+        gyro_P[i] = gyro_P[i] + gyro_Q[i];
+
+        //predict update
+        gyro_K[i] = gyro_P[i] / (gyro_P[i] + gyro_R[i]);
+        gyro_X_hat[i] = gyro_X_hat_minus[i] + gyro_K[i] * (gyro[i] - gyro_chushi[i] - gyro_X_hat_minus[i]);
+        gyro_P[i] = (1 - gyro_K[i]) * gyro_P[i];
+    }
 }
 
 
