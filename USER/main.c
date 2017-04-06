@@ -443,11 +443,12 @@ int main(void)
         {
             wuhaomiao = xitongshijian * 0.02f; //visiting by five milliseconds resolution
             debug[2]++;
-            mpu_dmp_get_data(&pitch, &roll, &yaw);//over amazing 52ms,move 50ms delay and we got 2.1ms,use dmp hardware
+			
+			mpu_dmp_get_data(&pitch, &roll, &yaw);//over amazing 52ms,move 50ms delay and we got 2.1ms,use dmp hardware
             roll_err = roll - desroll; //get roll_err
             pitch_err = pitch - despitch;
             yaw_err = yaw - desyaw;
-            //ag2q2rpy(gyrox_sr+0.0553938, gyroy_sr-0.0170442, gyroz_sr-0.0159790, aacx-960, aacy-350, aacz+1085, &pitch, &roll, &yaw);//计算耗时0.25ms;
+			
         }
         //five ms bottom
 
@@ -456,10 +457,6 @@ int main(void)
         {
             shihaomiao = xitongshijian * 0.01f; //visiting by ten milliseconds resolution
             debug[3]++;
-
-
-            //0.09*65536/4=1475(short为int16_t,65536 presentation for ±2g)
-            //desthrottle -= (int16_t)(0.03 * (float)(accz_out - aacz_chushi)); //当aacz大于初始时，说明飞机向上,油门应该减小,这个太恐怖了，伤到我了
 
             //-----------------------------Control and Throttle update top----------------------------------------------
             if(jiesuokeyi) //if ARMED,over 0.01204ms
