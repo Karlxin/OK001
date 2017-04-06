@@ -216,42 +216,42 @@
         <Ww>
           <count>9</count>
           <WinNumber>1</WinNumber>
-          <ItemText>jiesuokeyi,0x0A</ItemText>
+          <ItemText>debug[0],0x0A</ItemText>
         </Ww>
         <Ww>
           <count>10</count>
           <WinNumber>1</WinNumber>
-          <ItemText>channel1_in,0x0A</ItemText>
+          <ItemText>debug[1],0x0A</ItemText>
         </Ww>
         <Ww>
           <count>11</count>
           <WinNumber>1</WinNumber>
-          <ItemText>channel2_in,0x0A</ItemText>
+          <ItemText>debug[2],0x0A</ItemText>
         </Ww>
         <Ww>
           <count>12</count>
           <WinNumber>1</WinNumber>
-          <ItemText>channel3_in,0x0A</ItemText>
+          <ItemText>debug[3],0x0A</ItemText>
         </Ww>
         <Ww>
           <count>13</count>
           <WinNumber>1</WinNumber>
-          <ItemText>channel4_in,0x0A</ItemText>
+          <ItemText>debug[4],0x0A</ItemText>
         </Ww>
         <Ww>
           <count>14</count>
           <WinNumber>1</WinNumber>
-          <ItemText>TIM4CH1_CAPTURE_DOWNVAL,0x0A</ItemText>
+          <ItemText>debug[5],0x0A</ItemText>
         </Ww>
         <Ww>
           <count>15</count>
           <WinNumber>1</WinNumber>
-          <ItemText>TIM4CH1_CAPTURE_UPVAL,0x0A</ItemText>
+          <ItemText>debug[6],0x0A</ItemText>
         </Ww>
         <Ww>
           <count>16</count>
           <WinNumber>1</WinNumber>
-          <ItemText>tim4_T1,0x0A</ItemText>
+          <ItemText>debug[7],0x0A</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -590,7 +590,7 @@
       <GroupNumber>2</GroupNumber>
       <FileNumber>15</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
+      <tvExp>0</tvExp>
       <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>

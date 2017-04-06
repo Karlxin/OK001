@@ -46,10 +46,10 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //32767*0.03=900
 //10000*0.03=300
 //角速度转换为角度再输入进来，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
-float KP_THETA_X = 3, KP_THETA_Y = 3, KP_THETA_Z = 3;//常量
-float KP_OMEGA_X = 0.7*0.0610370, KP_OMEGA_Y = 0.6*0.0610370, KP_OMEGA_Z = 0.7*0.0610370;//常量
-float kp_theta_x = 3, kp_theta_y = 3, kp_theta_z = 3;//变量
-float kp_omega_x = 0.7*0.0610370, kp_omega_y = 0.6*0.0610370, kp_omega_z = 0.7*0.0610370;//变量
+float KP_THETA_X = 3.5, KP_THETA_Y = 3.5, KP_THETA_Z = 3.5;//常量
+float KP_OMEGA_X = 0.6*0.0610370, KP_OMEGA_Y = 0.5*0.0610370, KP_OMEGA_Z = 0.7*0.0610370;//常量
+float kp_theta_x = 3.5, kp_theta_y = 3.5, kp_theta_z = 3.5;//变量
+float kp_omega_x = 0.6*0.0610370, kp_omega_y = 0.5*0.0610370, kp_omega_z = 0.7*0.0610370;//变量
 //6*130=780;
 //0.5*1000=500;
 //consideration of mass of 1837g for MATLAB theory 

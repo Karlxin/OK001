@@ -66,12 +66,13 @@ extern u8 mpu_dmp_init(void);
 extern u8 ARMED;
 
 u32 xitongshijian = 0; //system timer,resolution of 0.1ms,119hour
-u32 erhaomiao = 0;//two millisecond resolution
-u32 wuhaomiao = 0;//five millisecond resolution
-u32 shihaomiao = 0; //ten millisecond resolution
-u32 ershihaomiao = 0; //twenty millisecond resolution
-u32 wushihaomiao = 0;//fifty millisecond resolution
-u32 yibaihaomiao = 0;//hundred millisecond resolution
+u32 haomiao = 0; //millisecond resolution
+u32 erhaomiao = 0;
+u32 wuhaomiao = 0;
+u32 shihaomiao = 0; //ten milliseconds resolution
+u32 ershihaomiao = 0;
+u32 wushihaomiao = 0;
+u32 yibaihaomiao = 0;//hundred milliseconds resolution
 u32 miaozhong = 0; //second resolution
 
 float roll, pitch, yaw;//欧拉角,DMP硬解得到的角度,roll -180~180 pitch -90~90 yaw -180~180
@@ -258,6 +259,8 @@ float pressure_X_hat_minus = 0; //previous predict
 float pressure_P = 40; //error variance
 //---pressure kalman bottom
 
+
+
 extern void complementation_filter(void);
 
 float Ahd = 0; //定高油门补偿
@@ -265,7 +268,7 @@ float Ahd = 0; //定高油门补偿
 extern void Sink_compensation(void);//掉高更新
 float Scd = 0; //掉高油门补偿
 
-float debug[10];
+u32 debug[10]={0,0,0,0,0,0,0,0,0,0};
 
 //deviation between 0.1ms，little boy do not be afraid
 
@@ -387,6 +390,7 @@ int main(void)
     LED0 = 1; //Darkening red LED,showing ARMED
     LED1 = 0; //Lightening green LED，showing DISARMED
 
+    haomiao = xitongshijian * 0.1f;
     erhaomiao = xitongshijian * 0.05f;//noticing that we disorder the schedule before
     wuhaomiao = xitongshijian * 0.02f;
     shihaomiao = xitongshijian * 0.01f;
@@ -398,19 +402,14 @@ int main(void)
 
     while(1)//using 12s to get there
     {
-        //two ms top
-        if(xitongshijian * 0.05f > erhaomiao + 1)
+        //ms top
+        if(xitongshijian * 0.1f > haomiao + 1)
         {
-            erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
-        }
-        //two ms bottom
-
-        //five ms top
-        if(xitongshijian * 0.02f > wuhaomiao + 1)
-        {
-            wuhaomiao = xitongshijian * 0.02f; //visiting by five milliseconds resolution
-
-            if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //得到加速度传感器数据,耗时0.6ms
+            haomiao = xitongshijian * 0.1f;
+			debug[0]++;
+			
+            //read MPU top
+            if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //get acc data,over 0.6ms
             {
                 Kalman_filter_accz();
                 accz_dt = (float)(xitongshijian - accz_temp_time) * 0.001;//how much time between two visit
@@ -421,12 +420,32 @@ int main(void)
                 //Kalman_filter_accx();
             }
 
-            if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))  //得到陀螺仪数据,耗时0.6ms
+            if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))  //get gyro data,over 0.6ms
             {
                 Gyro_filter();//滑动窗口滤波,耗时0.02ms
             }
+            //read MPU bottom
+        }
+        //ms bottom
 
+        //two ms top
+        if(xitongshijian * 0.05f > erhaomiao + 1)
+        {
+            erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
+			debug[1]++;
+        }
+        //two ms bottom
 
+        //five ms top
+        if(xitongshijian * 0.02f > wuhaomiao + 1)
+        {
+            wuhaomiao = xitongshijian * 0.02f; //visiting by five milliseconds resolution
+			debug[2]++;
+            mpu_dmp_get_data(&pitch, &roll, &yaw);//over amazing 52ms,move 50ms delay and we got 2.1ms,use dmp hardware
+            roll_err = roll - desroll; //get roll_err
+            pitch_err = pitch - despitch;
+            yaw_err = yaw - desyaw;
+            //ag2q2rpy(gyrox_sr+0.0553938, gyroy_sr-0.0170442, gyroz_sr-0.0159790, aacx-960, aacy-350, aacz+1085, &pitch, &roll, &yaw);//计算耗时0.25ms;
         }
         //five ms bottom
 
@@ -434,18 +453,9 @@ int main(void)
         if(xitongshijian * 0.01f > shihaomiao + 1)
         {
             shihaomiao = xitongshijian * 0.01f; //visiting by ten milliseconds resolution
-            mpu_dmp_get_data(&pitch, &roll, &yaw);//over amazing 52ms,move 50ms delay and we got 2.1ms,use dmp hardware
-            roll_err = roll - desroll; //get roll_err
-            pitch_err = pitch - despitch;
-            yaw_err = yaw - desyaw;
-            //ag2q2rpy(gyrox_sr+0.0553938, gyroy_sr-0.0170442, gyroz_sr-0.0159790, aacx-960, aacy-350, aacz+1085, &pitch, &roll, &yaw);//计算耗时0.25ms;
-        }
-        //ten ms bottom
+			debug[3]++;
+			
 
-        //twenty ms top
-        if(xitongshijian * 0.005f > ershihaomiao + 1)
-        {
-            ershihaomiao = xitongshijian * 0.005f; //visiting by twenty milliseconds resolution
             //0.09*65536/4=1475(short为int16_t,65536代表正负2g)
             //desthrottle -= (int16_t)(0.03 * (float)(accz_out - aacz_chushi)); //当aacz大于初始时，说明飞机向上,油门应该减小,这个太恐怖了，伤到我了
 
@@ -540,15 +550,24 @@ int main(void)
                     baochijiesuo = 0;//保持解锁重新归零
                 }
             }
-            //-----------------------------控制与油门刷新下界----------------------------------------------
 
             if(channel3_in > 1100)//只有油门大于1100时才允许更新油门和自动控制量
             {
-                cyberNation();//更新电机,经典50Hz更新法,over 0.06ms
+                cyberNation();//更新电机,over 0.06ms
                 //Altitude_hold_update();//定高叠加量
                 Sink_compensation();//油门补偿叠加量
                 Moto_Throttle(desthrottle);//只控制油门,但是这个函数会调用底层直接控制电机的函数.核心二调用一
             }
+            //-----------------------------控制与油门刷新下界----------------------------------------------
+
+        }
+        //ten ms bottom
+
+        //twenty ms top
+        if(xitongshijian * 0.005f > ershihaomiao + 1)
+        {
+            ershihaomiao = xitongshijian * 0.005f; //visiting by twenty milliseconds resolution
+			debug[4]++;
         }
         //twenty ms bottom
 
@@ -556,7 +575,7 @@ int main(void)
         if(xitongshijian * 0.002f > wushihaomiao + 1)
         {
             wushihaomiao = xitongshijian * 0.002f; //visiting by fifty milliseconds resolution
-            //debug[0]=cosf(roll*0.0174533);
+            debug[5]++;
 
             //serial top
             if(USART1_Open)
@@ -569,7 +588,7 @@ int main(void)
                 //ANO_DT_Send_Senser(accx_X_hat_minus, accy_X_hat_minus, accz_X_hat_minus, gyrox_out, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
                 //ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
                 //ANO_DT_Send_Senser((s16)channel1_in, (s16)channel2_in, (s16)channel3_in, (s16)channel4_in, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
-            	//ANO_DT_Send_Senser((s16)(979.0f * (cosf(roll * 0.0174533)*cosf(pitch * 0.0174533))), (s16)aacy * 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Altitude * 100); //over 0.5ms
+                //ANO_DT_Send_Senser((s16)(979.0f * (cosf(roll * 0.0174533)*cosf(pitch * 0.0174533))), (s16)aacy * 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Altitude * 100); //over 0.5ms
             }
             else if(USART2_Open)
             {
@@ -583,6 +602,8 @@ int main(void)
         if(xitongshijian * 0.001f > yibaihaomiao + 1)
         {
             yibaihaomiao = xitongshijian * 0.001f; //visit by hundred milliseconds resolution
+			 debug[6]++;
+			
             //MS561101BA_GetTemperature();//over 9.1ms
             MS561101BA_getPressure();//over 9.1ms
             Kalman_filter_pressure();
@@ -606,6 +627,9 @@ int main(void)
         if(xitongshijian * 0.0001f > miaozhong + 1)
         {
             miaozhong = xitongshijian * 0.0001f; //visit by seconds resolution
+			debug[7]++;
+			
+			
             //printf("  TEMP =%.2f℃\r\n", (float)TEMP / 100.00);
             //printf("  MS5611_Pressure =%fmbar\r\n", MS5611_Pressure / 100);
             //printf("  MS5611_Altitude =%f\r\n", MS5611_Altitude-Altitude_chushi);
