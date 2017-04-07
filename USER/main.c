@@ -3,9 +3,9 @@ Started at 2016
 Created by Karlxin(410824290@qq.com)
 Github:https://github.com/Karlxin/OK001.git
 OpenKarlCopter
-Version:dev_001
+Version:dev_002
 
-features:
+features:more flexible and more stable.some very little wobble exists.
 
 Notice:dev version created without experiment.If we want a stable version,we could go to github and
 checkout a test version or a stable version.

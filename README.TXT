@@ -6,6 +6,7 @@
 
 4.reason:	1.P
 		2.noise
+		3.the noise of gyrometer
 
 5.todo:		1.adjust P
 		2.adding frequency
@@ -24,6 +25,9 @@
 		10.adding alpha circle,video:20170406_210436.mp4
 		11.adding sliding window for alpha,crashed,noise is too big,or maybe the omega constraints is too big.video:20170407_083451.mp4
 		12.changing back,wobble exists.video:20170407_084544.mp4
+		13.nothing changed.video:20170407_090117.mp4
+		14.when desired is little,we let P_theta be little,roll wobble exists.it looks similar to APM,we solve that problem by decrease P of omega.video:20170407_093137.mp4
+		15.remove the variant P_theta.get P_theta down by .5,get P_omega down by .1,we found a nother key.video:20170407_094654.mp4
 
 7.solutions: 
 
