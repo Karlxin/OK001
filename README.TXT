@@ -34,6 +34,7 @@
 		18.let down alpha p to .003,crashed to the rear,video:20170407_115105.mp4
 		19.remove the alpha update,change the propeller to carbon fibre1047,the propeller force is not enough.
 		20.changed back to 1147 carbon fibre nylon propeller by qianfeng,the flexibility is down,but the stability is up,video:20170407_125919.mp4
+		21.sink down offset works good.video:20170407_133409.mp4
 
 7.solutions: 
 

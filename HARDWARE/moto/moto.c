@@ -134,10 +134,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
 
-    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //              CW3     1CCW	   / \				 
-    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //  俯视图          * *           / | \ X轴      	  Y轴
-    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //      	    CCW2    4CW         |
+    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 15, -15); //              CW3     1CCW	   / \				 
+    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 15, -15); //  俯视图          * *           / | \ X轴      	  Y轴
+    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 15, -15); //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 15, -15); //      	    CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }
@@ -352,7 +352,7 @@ void Altitude_hold_update(void)
 void Sink_compensation(void)
 {
     Scd = (channel3_in - 1000) / (cosf(desroll * 0.0174533) * cosf(despitch * 0.0174533)) - (channel3_in - 1000); //cosine between EarthFrame_Z with BodyFrame_Z
-    Scd = 0; //先测试以前的还能工作吗
+    //Scd = 0; //先测试以前的还能工作吗
 }
 
 void Kalman_filter_gyro(void)
