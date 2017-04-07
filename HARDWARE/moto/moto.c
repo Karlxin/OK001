@@ -46,8 +46,8 @@ float KP_THETA_X = 3, KP_THETA_Y = 3, KP_THETA_Z = 3;//常量
 float kp_theta_x = 3, kp_theta_y = 3, kp_theta_z = 3;//变量
 float KP_OMEGA_X = 0.6 * 0.0610370, KP_OMEGA_Y = 0.5 * 0.0610370, KP_OMEGA_Z = 0.7 * 0.0610370; //常量
 float kp_omega_x = 0.6 * 0.0610370, kp_omega_y = 0.5 * 0.0610370, kp_omega_z = 0.7 * 0.0610370; //变量
-float KP_ALPHA_X = 0.03 * 0.0610370, KP_ALPHA_Y = 0.03 * 0.0610370, KP_ALPHA_Z = 0 * 0.0610370;
-float kp_alpha_x = 0.03 * 0.0610370, kp_alpha_y = 0.03 * 0.0610370, kp_alpha_z = 0 * 0.0610370;
+float KP_ALPHA_X = 0.03, KP_ALPHA_Y = 0.03, KP_ALPHA_Z = 0;
+float kp_alpha_x = 0.03, kp_alpha_y = 0.03, kp_alpha_z = 0;
 //6*130=780;
 //0.5*1000=500;
 //consideration of mass of 1837g for MATLAB theory
@@ -161,10 +161,10 @@ void cyberNation_omega(void)
 
 void cyberNation_alpha(void)
 {
-    cNd1_alpha = +alphax_out * kp_alpha_x + alphay_out * kp_alpha_y + alphaz_out * kp_alpha_z;
-    cNd2_alpha = -alphax_out * kp_alpha_x - alphay_out * kp_alpha_y + alphaz_out * kp_alpha_z;
-    cNd3_alpha = -alphax_out * kp_alpha_x + alphay_out * kp_alpha_y - alphaz_out * kp_alpha_z;
-    cNd4_alpha = +alphax_out * kp_alpha_x - alphay_out * kp_alpha_y - alphaz_out * kp_alpha_z;
+    cNd1_alpha = +(-cNd1_omega+cNd2_omega+cNd3_omega-cNd4_omega-cNd1_theta+cNd2_theta+cNd3_theta-cNd4_theta) * kp_alpha_x + (-cNd1_omega+cNd2_omega-cNd3_omega+cNd4_omega-cNd1_theta+cNd2_theta-cNd3_theta+cNd4_theta) * kp_alpha_y;
+    cNd2_alpha = -(-cNd1_omega+cNd2_omega+cNd3_omega-cNd4_omega-cNd1_theta+cNd2_theta+cNd3_theta-cNd4_theta) * kp_alpha_x - (-cNd1_omega+cNd2_omega-cNd3_omega+cNd4_omega-cNd1_theta+cNd2_theta-cNd3_theta+cNd4_theta) * kp_alpha_y;
+    cNd3_alpha = -(-cNd1_omega+cNd2_omega+cNd3_omega-cNd4_omega-cNd1_theta+cNd2_theta+cNd3_theta-cNd4_theta) * kp_alpha_x + (-cNd1_omega+cNd2_omega-cNd3_omega+cNd4_omega-cNd1_theta+cNd2_theta-cNd3_theta+cNd4_theta) * kp_alpha_y;
+    cNd4_alpha = +(-cNd1_omega+cNd2_omega+cNd3_omega-cNd4_omega-cNd1_theta+cNd2_theta+cNd3_theta-cNd4_theta) * kp_alpha_x - (-cNd1_omega+cNd2_omega-cNd3_omega+cNd4_omega-cNd1_theta+cNd2_theta-cNd3_theta+cNd4_theta) * kp_alpha_y;
 }
 
 #define Filter_Num 6//sliding window with 6 values

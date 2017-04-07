@@ -5,7 +5,7 @@ Github:https://github.com/Karlxin/OK001.git
 OpenKarlCopter
 Version:dev_002
 
-features:more flexible and more stable.some very little wobble exists.
+features:To be continued...
 
 Notice:dev version created without experiment.If we want a stable version,we could go to github and
 checkout a test version or a stable version.
@@ -431,23 +431,11 @@ int main(void)
                 accz_temp_time = xitongshijian;//record the time
                 acc_Climb += (accz_X_hat_minus - aacz_chushi) * 0.0005978 * accz_dt;//accelerometer integral
                 acc_Climb_out = acc_Climb - acc_Climb_err; //error adjust by using baro derivative.
-                //Kalman_filter_accy();
-                //Kalman_filter_accx();
             }
 
             if(!MPU_Get_Gyroscope(&gyro[0], &gyro[1], &gyro[2]))  //get gyro data,over 0.6ms
             {
                 Gyro_filter();//sliding window filter,over 0.02ms
-                gyro_temp_dt = (xitongshijian - gyro_temp_time) * 0.0001;
-                gyro_temp_time = xitongshijian;
-                alphax = (gyrox_out - gyrox_temp) / gyro_temp_dt;
-                alphay = (gyroy_out - gyroy_temp) / gyro_temp_dt;
-                alphaz = (gyroz_out - gyroz_temp) / gyro_temp_dt;
-				Alpha_filter();
-                gyrox_temp = gyrox_out;
-                gyroy_temp = gyroy_out;
-                gyroz_temp = gyroz_out;
-
                 if(kalman_gyro_Open)
                 {
                     Kalman_filter_gyro();
@@ -586,9 +574,9 @@ int main(void)
             if(channel3_in > 1100)//only when channel3 >1100 will update motor controlling
             {
                 //cyberNation();//update motor,over 0.06ms
+				//cyberNation_alpha();
+				cyberNation_omega();
                 cyberNation_theta();
-                cyberNation_omega();
-                //cyberNation_alpha();
                 //Altitude_hold_update();//altitude holding superposition
                 Sink_compensation();//sink offset superposition
                 Moto_Throttle(desthrottle);//core 2 called in 1 place

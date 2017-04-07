@@ -11,6 +11,7 @@
 5.todo:		1.adjust P
 		2.adding frequency
 		3.adding alpha P
+		
 
 6.phenomenon:
 		1.rearrange schedule,this must be the key,video:20170406_102028.mp4
@@ -28,6 +29,11 @@
 		13.nothing changed.video:20170407_090117.mp4
 		14.when desired is little,we let P_theta be little,roll wobble exists.it looks similar to APM,we solve that problem by decrease P of omega.video:20170407_093137.mp4
 		15.remove the variant P_theta.get P_theta down by .5,get P_omega down by .1,we found a nother key.video:20170407_094654.mp4
+		16.let the d directively be the represent of acc,this value maybe too big,it lean to the left.video:20170407_094654.mp4
+		17.let alpha p down to .005,and change the alpha to be the last alpha that is to change the update order,it runs okay at first,but crashed at last.video:20170407_113746.mp4
+		18.let down alpha p to .003,crashed to the rear,video:20170407_115105.mp4
+		19.remove the alpha update,change the propeller to carbon fibre1047,the propeller force is not enough.
+		20.changed back to 1147 carbon fibre nylon propeller by qianfeng,the flexibility is down,but the stability is up,video:20170407_125919.mp4
 
 7.solutions: 
 
