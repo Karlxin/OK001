@@ -2,39 +2,15 @@
 	
 2.realizing:
 
-3.problem:	1.back to stable position with a little bit wobble 
+3.problem:	
 
-4.reason:	1.P
-		2.noise
-		3.the noise of gyrometer
+4.reason:	
 
-5.todo:		1.adjust P
-		2.adding frequency
-		3.adding alpha P
+5.todo:		1.altitude hold
+		2.find a good way to guess Z velocity
 		
-
-6.phenomenon:
-		1.rearrange schedule,this must be the key,video:20170406_102028.mp4
-		2.Nothing changed.video:20170406_131328.mp4
-		3.arranged.some oscillation exist.video:20170406_140855.mp4
-		4.using kalman,but oscillation bigger,video:20170406_145544.mp4
-		5.change back,it works better,but a little oscillation sometimes,video:20170406_151443.mp4
-		6.omegaP all added by 0.1.looks like a little better?,video:20170406_172310.mp4
-		7.adding 200Hz for gyrometer and accelerometer.no better,video:20170406_174328.mp4
-		8.gyro_480,dmp_180,c&u_100,video:20170406_180350.mp4
-		9.no big change.video:20170406_205516.mp4
-		10.adding alpha circle,video:20170406_210436.mp4
-		11.adding sliding window for alpha,crashed,noise is too big,or maybe the omega constraints is too big.video:20170407_083451.mp4
-		12.changing back,wobble exists.video:20170407_084544.mp4
-		13.nothing changed.video:20170407_090117.mp4
-		14.when desired is little,we let P_theta be little,roll wobble exists.it looks similar to APM,we solve that problem by decrease P of omega.video:20170407_093137.mp4
-		15.remove the variant P_theta.get P_theta down by .5,get P_omega down by .1,we found a nother key.video:20170407_094654.mp4
-		16.let the d directively be the represent of acc,this value maybe too big,it lean to the left.video:20170407_094654.mp4
-		17.let alpha p down to .005,and change the alpha to be the last alpha that is to change the update order,it runs okay at first,but crashed at last.video:20170407_113746.mp4
-		18.let down alpha p to .003,crashed to the rear,video:20170407_115105.mp4
-		19.remove the alpha update,change the propeller to carbon fibre1047,the propeller force is not enough.
-		20.changed back to 1147 carbon fibre nylon propeller by qianfeng,the flexibility is down,but the stability is up,video:20170407_125919.mp4
-		21.sink down offset works good.video:20170407_133409.mp4
+6.phenomenon:	1.nothing changed.video:20170407_143230.mp4
+		2.
 
 7.solutions: 
 

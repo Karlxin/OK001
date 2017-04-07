@@ -102,6 +102,7 @@ u32 gyxt = 0; //gyroxitong,use for getting the gyrometer offset,it record the sy
 extern void MS561101BA_get_altitude(void);//calculate the altitude
 
 float MS5611_Altitude;//using MS5611 pressure and temperature to calculate the Altitude.
+float Altitude_out=0;
 
 extern void MS561101BA_getPressure(void);
 extern void MS561101BA_GetTemperature(void);
@@ -116,7 +117,7 @@ float roll_err, pitch_err, yaw_err;//error,roll_err=roll-desroll,desroll is the 
 float desroll, despitch, desyaw;//expectation
 
 short gyrox_out, gyroy_out, gyroz_out;//after sliding windows filter
-short accz_out;//after
+short accz_out;//after filter, and trans
 
 extern void Gyro_filter(void);
 extern void ANO_DT_Send_RCData(u16 thr, u16 yaw, u16 rol, u16 pit, u16 aux1, u16 aux2, u16 aux3, u16 aux4, u16 aux5, u16 aux6);
@@ -179,12 +180,12 @@ extern void Kalman_filter_alt(void);
 float Altitude_minus = 0;//last barometer altitude converted by pressure
 float Altitude_dt = 0.1;//the delta time
 u32 Altitude_temp_time = 0; //record the time
-float Altitude_R = 0.07; //3sigma 0.07*3=0.21,measuring variance.
-float Altitude_Q = 0.0004; //process variance
+float Altitude_R = 0.2; //measurement variance ¡À0.2m
+float Altitude_Q = 0.0169; //process variance 1.3/10=0.13 0.13^2=0.0169
 float Altitude_K = 0; //kalman gain
 float Altitude_X_hat = 0; //init predict
 float Altitude_X_hat_minus = 0; //previous predict
-float Altitude_P = 1; //error variance
+float Altitude_P = 0; //error variance
 //---Alt karlman bottom
 
 //---Climb Karlman top
@@ -202,7 +203,7 @@ extern void Kalman_filter_accz(void);
 float accz_dt = 0.01; //the delta time
 u32 accz_temp_time = 0; //the record time
 float accz_R = 23; //3sigma 23*3=69;
-float accz_Q = 0.0004; //process Variance
+float accz_Q = 0.01; //process Variance
 float accz_K = 0; //kalman gain
 float accz_X_hat = 15300; //init predict for accz
 float accz_X_hat_minus = 0; //previous predict for accz
@@ -284,7 +285,9 @@ float alphax_out=0;
 float alphay_out=0;
 float alphaz_out=0;
 
-extern void Alpha_filter(void);
+extern void Altitude_filter(void);
+
+extern void Filter_Altitude(void);
 
 int main(void)
 {
@@ -292,9 +295,10 @@ int main(void)
     u8 jiesuokeyi = 0;//sign for ARMED
     u16 baochijiesuo = 0;//counter for holding ARMED channel input
     u16 baochijiasuo = 0;//counter for holding DISARMED channel input
+	u8 flymode=0;
     int16_t temp1, temp2,  desthrottle, temp4; //to convert channel pulse width modulation wave to expectation angle
     u8 i;//for for loop
-    u8 USART1_Open = 0;//Open Serial by 500000 baud rate by setting it.
+    u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
     u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
 
@@ -426,11 +430,12 @@ int main(void)
             //read MPU top
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //get acc data,over 0.6ms
             {
-                Kalman_filter_accz();
-                accz_dt = (float)(xitongshijian - accz_temp_time) * 0.0001;//how much time between two visit
-                accz_temp_time = xitongshijian;//record the time
-                acc_Climb += (accz_X_hat_minus - aacz_chushi) * 0.0005978 * accz_dt;//accelerometer integral
-                acc_Climb_out = acc_Climb - acc_Climb_err; //error adjust by using baro derivative.
+				Accz_filter();//sliding window filter
+                //Kalman_filter_accz();
+                //accz_dt = (float)(xitongshijian - accz_temp_time) * 0.0001;//how much time between two visit
+                //accz_temp_time = xitongshijian;//record the time
+                //acc_Climb += (accz_X_hat_minus - aacz_chushi) * 0.0005978 * accz_dt;//accelerometer integral
+                //acc_Climb_out = acc_Climb - acc_Climb_err; //error adjust by using baro derivative.
             }
 
             if(!MPU_Get_Gyroscope(&gyro[0], &gyro[1], &gyro[2]))  //get gyro data,over 0.6ms
@@ -577,8 +582,8 @@ int main(void)
 				//cyberNation_alpha();
 				cyberNation_omega();
                 cyberNation_theta();
-                //Altitude_hold_update();//altitude holding superposition
                 Sink_compensation();//sink offset superposition
+				Altitude_hold_update();//altitude holding superposition
                 Moto_Throttle(desthrottle);//core 2 called in 1 place
             }
             //-----------------------------Control and Throttle update bottom--------------------------------------------
@@ -603,14 +608,14 @@ int main(void)
             //serial top
             if(USART1_Open)
             {
-                ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
-                ANO_DT_Send_MotoPWM((u16) cNd1_omega, (u16) cNd2_omega, (u16) cNd3_omega, (u16) cNd4_omega, (u16) cNd1_alpha, (u16) cNd2_alpha, (u16) cNd3_alpha, (u16) cNd4_alpha); //over 0.5ms
+                ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi);//over 0.4ms
+                ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
                 //ANO_DT_Send_Senser((s16)aacx,(s16)aacy,(s16)aacz,(s16)gyro_X_hat_minus[0],(s16)gyro_X_hat_minus[1],(s16)gyro_X_hat_minus[2],(s16)gyro[0]-gyro_chushi[0],(s16)gyro[1]-gyro_chushi[1],(s16)gyro[2]-gyro_chushi[2],(s32) MS5611_Pressure);
 
                 //ANO_DT_Send_Senser((s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)gyro_X_hat_minus[0], (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyro[0] - gyro_chushi[0], (s16)gyro[1] - gyro_chushi[1], (s16)gyro[2] - gyro_chushi[2], (s32) MS5611_Pressure);
 				
-				 ANO_DT_Send_Senser((s16)cNd1_alpha,(s16)cNd2_alpha,(s16)cNd3_alpha,(s16)cNd4_alpha,(s16)cNd1_omega,(s16)cNd2_omega,(s16)cNd3_omega,(s16)cNd4_omega,(s16)0,(s32)0);
+				 ANO_DT_Send_Senser((s16)(Altitude_out*100),(s16)(acc_Climb_out*100),(s16)(accz_out*0.0598145),(s16)gyrox_out,(s16)gyroy_out,(s16)gyroz_out,(s16)Ahd,(s16)0,(s16)0,(s32)0);
 				
                 //ANO_DT_Send_Senser((s16)aacx * 0.05978, (s16)aacy * 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)Scd, (s16)Ahd, (s16)0, (s32)MS5611_Altitude * 100); //over 0.5ms
                 //ANO_DT_Send_Senser(accx_X_hat_minus, accy_X_hat_minus, accz_X_hat_minus, gyrox_out, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
@@ -634,20 +639,25 @@ int main(void)
 
             //MS561101BA_GetTemperature();//over 9.1ms
             MS561101BA_getPressure();//over 9.1ms
-            Kalman_filter_pressure();
-            scaling = pressure_X_hat_minus / Pressure_chushi;//using to calculate the height
+            //Kalman_filter_pressure();
+            //scaling = pressure_X_hat_minus / Pressure_chushi;//using to calculate the height
+			scaling = MS5611_Pressure / Pressure_chushi;
+			
             MS561101BA_get_altitude();//0.02ms
+			Altitude_filter();
             //Kalman_filter_alt();//0.01ms
             Altitude_dt = 0.001f * (float)(xitongshijian - Altitude_temp_time);
             Altitude_temp_time = xitongshijian;
-            Kalman_filter_climb();
-            complementation_filter();//update acc_Climb_err
+			acc_Climb_out=(Altitude_out - Altitude_minus) / Altitude_dt;
+			
+            //Kalman_filter_climb();
+            //complementation_filter();//update acc_Climb_err
             //ANO_DT_Send_Senser(aacx-aacx_chushi, aacy-aacy_chushi, acc_Climb_X_hat_minus-aacz_chushi, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Pressure);
             //ANO_DT_Send_Status(MS5611_Altitude-Altitude_chushi, Altitude_X_hat_minus-Altitude_chushi, (Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
             //ANO_DT_Send_Status((Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, acc_Climb, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
 
             //ANO_DT_Send_Status(acc_Climb, acc_Climb_out, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0); //over 0.4ms
-            Altitude_minus = MS5611_Altitude;
+            Altitude_minus = Altitude_out;
         }
         //hundred ms bottom
 

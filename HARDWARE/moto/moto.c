@@ -41,7 +41,8 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //角速度暂时没有估计,暂时估计在10000以内
 //32767*0.03=900
 //10000*0.03=300
-//角速度转换为角度再输入进来，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
+//angle by degree
+//palstance in 32768，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
 float KP_THETA_X = 3, KP_THETA_Y = 3, KP_THETA_Z = 3;//常量
 float kp_theta_x = 3, kp_theta_y = 3, kp_theta_z = 3;//变量
 float KP_OMEGA_X = 0.6 * 0.0610370, KP_OMEGA_Y = 0.5 * 0.0610370, KP_OMEGA_Z = 0.7 * 0.0610370; //常量
@@ -51,17 +52,18 @@ float kp_alpha_x = 0.03, kp_alpha_y = 0.03, kp_alpha_z = 0;
 //6*130=780;
 //0.5*1000=500;
 //consideration of mass of 1837g for MATLAB theory
+//velocity and accelerate in centimeter
 float KP_VEL_Z = 5 * 0.5443658;
-float KP_ACC_Z = 0.5 * 0.5443658;
 float kp_vel_Z = 5 * 0.5443658;
+float KP_ACC_Z = 0.5 * 0.5443658;
 float kp_acc_Z = 0.5 * 0.5443658;
 //PD controller bottom
 
-extern float roll_err, pitch_err, yaw_err;//误差值,roll_err=roll-desroll,其中desroll为遥控信号线性映射的角度值
-extern float desroll, despitch, desyaw;//定义想要的横滚，俯仰，偏航，油门
+extern float roll_err, pitch_err, yaw_err;
+extern float desroll, despitch, desyaw;
 
 extern short gyrox_out, gyroy_out, gyroz_out;
-extern short aacx, aacy, aacz;     //加速度传感器原始数据
+extern short aacx, aacy, aacz;     
 extern short accz_out;
 
 extern float Ahd;
@@ -82,6 +84,10 @@ extern float alphax_out;
 extern float alphay_out;
 extern float alphaz_out;
 
+extern short aacz_chushi;
+
+extern float MS5611_Altitude;
+extern float Altitude_out;
 
 //just constrain from right
 int16_t Constrain_up(int16_t throttle, int16_t max)
@@ -134,10 +140,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
 
-    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 15, -15); //              CW3     1CCW	   / \				 
-    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 15, -15); //  俯视图          * *           / | \ X轴      	  Y轴
-    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 15, -15); //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 15, -15); //      	    CCW2    4CW         |
+    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15)+ Constrain((int16_t)Ahd, 5, -5) ; //              CW3     1CCW	   / \				 
+    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15)+ Constrain((int16_t)Ahd, 5, -5) ; //  俯视图          * *           / | \ X轴      	  Y轴
+    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15)+ Constrain((int16_t)Ahd, 5, -5) ; //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15)+ Constrain((int16_t)Ahd, 5, -5) ; //      	    CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }
@@ -198,7 +204,7 @@ void Gyro_filter(void)
     }
 }
 
-#define Filter_Num2 6//sliding window with 6 values
+#define Filter_Num2 10//sliding window with <input> values
 void Accz_filter(void)
 {
     static short Filter_accz[Filter_Num2];
@@ -206,7 +212,7 @@ void Accz_filter(void)
     int32_t Filter_sum_accz = 0;
     uint8_t i;
 
-    Filter_accz[Filter_count2] = aacz;
+    Filter_accz[Filter_count2] = aacz-aacz_chushi;
 
     for(i = 0; i < Filter_Num2; i++)
     {
@@ -223,32 +229,26 @@ void Accz_filter(void)
     }
 }
 
-#define Filter_Num3 6//sliding window with 6 values
-void Alpha_filter(void)
+#define Filter_Num3 12//sliding window with 6 values
+void Altitude_filter(void)
 {
-    static short Filter_alphax[Filter_Num3], Filter_alphay[Filter_Num3], Filter_alphaz[Filter_Num];
+    static float Filter_Altitude[Filter_Num3];//if use integer,we will lose the value
     static uint8_t Filter_count3;
-    int32_t Filter_sum_alphax = 0, Filter_sum_alphay = 0, Filter_sum_alphaz = 0;
+    float Filter_sum_Altitude=0;
     uint8_t i;
 
-    Filter_alphax[Filter_count3] = alphax;
-    Filter_alphay[Filter_count3] = alphay;
-    Filter_alphaz[Filter_count3] = alphaz;
+    Filter_Altitude[Filter_count3] = MS5611_Altitude;
 
     for(i = 0; i < Filter_Num3; i++)
     {
-        Filter_sum_alphax += Filter_alphax[i];
-        Filter_sum_alphay += Filter_alphay[i];
-        Filter_sum_alphaz += Filter_alphaz[i];
+        Filter_sum_Altitude += Filter_Altitude[i];
     }
 
-    alphax_out = Filter_sum_alphax / Filter_Num3;
-    alphay_out = Filter_sum_alphay / Filter_Num3;
-    alphaz_out = Filter_sum_alphaz / Filter_Num3;
+    Altitude_out = Filter_sum_Altitude / Filter_Num3;
 
     Filter_count3++;
 
-    if(Filter_count3 == Filter_Num)
+    if(Filter_count3 == Filter_Num3)
     {
         Filter_count3 = 0;
     }
@@ -340,19 +340,17 @@ extern short aacz_chushi;
 
 void Altitude_hold_update(void)
 {
-    if(1500 < channel3_in < 1550)
+    if(desroll<0.5&&despitch<0.5)
     {
-        Ahd = -kp_vel_Z * acc_Climb_out - kp_acc_Z * (accz_X_hat_minus - (float)aacz_chushi);
-        Ahd = 0; //暂时不要这个补偿
+        Ahd = -kp_vel_Z * acc_Climb_out - kp_acc_Z *accz_out;
     }
-    Ahd = 0; //防止意外的发生嘛
+    Ahd = 0; 
 }
 
 //degree to radian by multiplier 0.0174533
 void Sink_compensation(void)
 {
     Scd = (channel3_in - 1000) / (cosf(desroll * 0.0174533) * cosf(despitch * 0.0174533)) - (channel3_in - 1000); //cosine between EarthFrame_Z with BodyFrame_Z
-    //Scd = 0; //先测试以前的还能工作吗
 }
 
 void Kalman_filter_gyro(void)
