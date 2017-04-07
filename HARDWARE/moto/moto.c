@@ -43,11 +43,11 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //10000*0.03=300
 //角速度转换为角度再输入进来，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
 float KP_THETA_X = 3.5, KP_THETA_Y = 3.5, KP_THETA_Z = 3.5;//常量
-float KP_OMEGA_X = 0.7 * 0.0610370, KP_OMEGA_Y = 0.6 * 0.0610370, KP_OMEGA_Z = 0.8 * 0.0610370; //常量
-float KP_ALPHA_X = 0.05 * 0.0610370, KP_ALPHA_Y = 0.05 * 0.0610370, KP_ALPHA_Z = 0 * 0.0610370;
 float kp_theta_x = 3.5, kp_theta_y = 3.5, kp_theta_z = 3.5;//变量
+float KP_OMEGA_X = 0.7 * 0.0610370, KP_OMEGA_Y = 0.6 * 0.0610370, KP_OMEGA_Z = 0.8 * 0.0610370; //常量
 float kp_omega_x = 0.7 * 0.0610370, kp_omega_y = 0.6 * 0.0610370, kp_omega_z = 0.8 * 0.0610370; //变量
-float kp_alpha_x = 0.05 * 0.0610370, kp_alpha_y = 0.05 * 0.0610370, kp_alpha_z = 0 * 0.0610370;
+float KP_ALPHA_X = 0.03 * 0.0610370, KP_ALPHA_Y = 0.03 * 0.0610370, KP_ALPHA_Z = 0 * 0.0610370;
+float kp_alpha_x = 0.03 * 0.0610370, kp_alpha_y = 0.03 * 0.0610370, kp_alpha_z = 0 * 0.0610370;
 //6*130=780;
 //0.5*1000=500;
 //consideration of mass of 1837g for MATLAB theory
@@ -77,6 +77,11 @@ extern float gyro_X_hat_minus[3];
 extern float gyro_P[3];
 extern short gyro[3];
 extern short gyro_chushi[3];
+
+extern float alphax_out;
+extern float alphay_out;
+extern float alphaz_out;
+
 
 //just constrain from right
 int16_t Constrain_up(int16_t throttle, int16_t max)
@@ -129,10 +134,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
 
-    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 50, -50) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //              CW3     1CCW	   / \				 
-    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 50, -50) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //  俯视图          * *           / | \ X轴      	  Y轴
-    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 50, -50) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 50, -50) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //      	    CCW2    4CW         |
+    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //              CW3     1CCW	   / \				 
+    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //  俯视图          * *           / | \ X轴      	  Y轴
+    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Ahd, 30, -30) + Constrain((int16_t)Scd, 30, -30); //      	    CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }
@@ -156,10 +161,10 @@ void cyberNation_omega(void)
 
 void cyberNation_alpha(void)
 {
-    cNd1_alpha = +alphax * kp_alpha_x + alphay * kp_alpha_y + alphaz * kp_alpha_z;
-    cNd2_alpha = -alphax * kp_alpha_x - alphay * kp_alpha_y + alphaz * kp_alpha_z;
-    cNd3_alpha = -alphax * kp_alpha_x + alphay * kp_alpha_y - alphaz * kp_alpha_z;
-    cNd4_alpha = +alphax * kp_alpha_x - alphay * kp_alpha_y - alphaz * kp_alpha_z;
+    cNd1_alpha = +alphax_out * kp_alpha_x + alphay_out * kp_alpha_y + alphaz_out * kp_alpha_z;
+    cNd2_alpha = -alphax_out * kp_alpha_x - alphay_out * kp_alpha_y + alphaz_out * kp_alpha_z;
+    cNd3_alpha = -alphax_out * kp_alpha_x + alphay_out * kp_alpha_y - alphaz_out * kp_alpha_z;
+    cNd4_alpha = +alphax_out * kp_alpha_x - alphay_out * kp_alpha_y - alphaz_out * kp_alpha_z;
 }
 
 #define Filter_Num 6//sliding window with 6 values
@@ -203,7 +208,7 @@ void Accz_filter(void)
 
     Filter_accz[Filter_count2] = aacz;
 
-    for(i = 0; i < Filter_Num; i++)
+    for(i = 0; i < Filter_Num2; i++)
     {
         Filter_sum_accz += Filter_accz[i];
     }
@@ -217,6 +222,39 @@ void Accz_filter(void)
         Filter_count2 = 0;
     }
 }
+
+#define Filter_Num3 6//sliding window with 6 values
+void Alpha_filter(void)
+{
+    static short Filter_alphax[Filter_Num3], Filter_alphay[Filter_Num3], Filter_alphaz[Filter_Num];
+    static uint8_t Filter_count3;
+    int32_t Filter_sum_alphax = 0, Filter_sum_alphay = 0, Filter_sum_alphaz = 0;
+    uint8_t i;
+
+    Filter_alphax[Filter_count3] = alphax;
+    Filter_alphay[Filter_count3] = alphay;
+    Filter_alphaz[Filter_count3] = alphaz;
+
+    for(i = 0; i < Filter_Num3; i++)
+    {
+        Filter_sum_alphax += Filter_alphax[i];
+        Filter_sum_alphay += Filter_alphay[i];
+        Filter_sum_alphaz += Filter_alphaz[i];
+    }
+
+    alphax_out = Filter_sum_alphax / Filter_Num3;
+    alphay_out = Filter_sum_alphay / Filter_Num3;
+    alphaz_out = Filter_sum_alphaz / Filter_Num3;
+
+    Filter_count3++;
+
+    if(Filter_count3 == Filter_Num)
+    {
+        Filter_count3 = 0;
+    }
+}
+
+
 
 /******************************************************************************
 函数原型：	void Calculate_FilteringCoefficient(float Time, float Cut_Off)

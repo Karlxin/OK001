@@ -5,26 +5,26 @@ Github:https://github.com/Karlxin/OK001.git
 OpenKarlCopter
 Version:dev_001
 
+features:
+
 Notice:dev version created without experiment.If we want a stable version,we could go to github and
 checkout a test version or a stable version.
 
-features:more stable,more concise,more essential.
-
-PS:
+postscript:
 I am very grateful to Andrew Ng for the dreams of Artificial Intelligence and the open but valuable
 course of machine learning in Coursera.
 
 If you wanted experiments videos,please send emails to Karl with 410824290@qq.com.
 
-You time is valuable,please please please do not do the things waste your time!
+Your time is valuable,please please please do not do the things wasting your time!
+
+no time for us to waste.do our best to build the artificial intelligence
 
 I hope some day we will meet each other with our dreams achieved.
 
 Good Luck!
 
 EL PSY CONGROO
-
-
 --------------------------------version information top-------------------------------------------*/
 
 #include "led.h"//light emitting diode head file 
@@ -88,7 +88,7 @@ float temp_axc = 0, temp_ayc = 0, temp_azc = 0;
 
 u32 gyro_temp_time = 0;
 float gyro_temp_dt = 0;
-short gyrox_temp=0,gyroy_temp=0,gyroz_temp=0;
+short gyrox_temp = 0, gyroy_temp = 0, gyroz_temp = 0;
 
 
 int16_t deadzone = 20; //remote controller deadzone
@@ -274,11 +274,17 @@ u32 debug[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //time pin,to observe the real f
 
 int16_t d1 = 0, d2 = 0, d3 = 0, d4 = 0;
 
-float alphax=0,alphay=0,alphaz=0;
+float alphax = 0, alphay = 0, alphaz = 0;
 
 extern void cyberNation_theta(void);
 extern void cyberNation_omega(void);
 extern void cyberNation_alpha(void);
+
+float alphax_out=0;
+float alphay_out=0;
+float alphaz_out=0;
+
+extern void Alpha_filter(void);
 
 int main(void)
 {
@@ -432,15 +438,16 @@ int main(void)
             if(!MPU_Get_Gyroscope(&gyro[0], &gyro[1], &gyro[2]))  //get gyro data,over 0.6ms
             {
                 Gyro_filter();//sliding window filter,over 0.02ms
-				gyro_temp_dt=(xitongshijian-gyro_temp_time)*0.0001;
-				gyro_temp_time=xitongshijian;
-				alphax=(gyrox_out-gyrox_temp)/gyro_temp_dt;
-				alphay=(gyroy_out-gyroy_temp)/gyro_temp_dt;
-				alphaz=(gyroz_out-gyroz_temp)/gyro_temp_dt;
-				gyrox_temp=gyrox_out;
-				gyroy_temp=gyroy_out;
-				gyroz_temp=gyroz_out;
-				
+                gyro_temp_dt = (xitongshijian - gyro_temp_time) * 0.0001;
+                gyro_temp_time = xitongshijian;
+                alphax = (gyrox_out - gyrox_temp) / gyro_temp_dt;
+                alphay = (gyroy_out - gyroy_temp) / gyro_temp_dt;
+                alphaz = (gyroz_out - gyroz_temp) / gyro_temp_dt;
+				Alpha_filter();
+                gyrox_temp = gyrox_out;
+                gyroy_temp = gyroy_out;
+                gyroz_temp = gyroz_out;
+
                 if(kalman_gyro_Open)
                 {
                     Kalman_filter_gyro();
@@ -524,8 +531,10 @@ int main(void)
                 }
                 else//channel3<1100
                 {
-                    desthrottle = 0;//等于1000太恐怖了，根本降不下油门，在发散的时候救都救不回
-                    desroll = despitch = desyaw = 0;
+                    d1=0;
+					d2=0;
+					d3=0;
+					d4=0;
                     Moto_PwmRflash(0, 0, 0, 0);//core 1 called in place 1
                 }
 
@@ -549,8 +558,10 @@ int main(void)
             }
             else//解锁不可以
             {
-                desthrottle = 0;//等于1000太恐怖了，根本降不下油门，在发散的时候救都救不回
-                desroll = despitch = desyaw = 0;//想要的横滚俯仰偏航均为零
+                d1=0;
+				d2=0;
+				d3=0;
+				d4=0;
                 Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化,over 0.02ms,core 1 called in 2 place
 
                 if(channel3_in < 1100 && channel4_in > 1900)//油门小于1100，偏航角大于1900,也就是油门最下，偏航最右
@@ -575,9 +586,9 @@ int main(void)
             if(channel3_in > 1100)//only when channel3 >1100 will update motor controlling
             {
                 //cyberNation();//update motor,over 0.06ms
-				cyberNation_theta();
-				cyberNation_omega();
-				//cyberNation_alpha();
+                cyberNation_theta();
+                cyberNation_omega();
+                //cyberNation_alpha();
                 //Altitude_hold_update();//altitude holding superposition
                 Sink_compensation();//sink offset superposition
                 Moto_Throttle(desthrottle);//core 2 called in 1 place
@@ -605,12 +616,14 @@ int main(void)
             if(USART1_Open)
             {
                 ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
-                ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
+                ANO_DT_Send_MotoPWM((u16) cNd1_omega, (u16) cNd2_omega, (u16) cNd3_omega, (u16) cNd4_omega, (u16) cNd1_alpha, (u16) cNd2_alpha, (u16) cNd3_alpha, (u16) cNd4_alpha); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
                 //ANO_DT_Send_Senser((s16)aacx,(s16)aacy,(s16)aacz,(s16)gyro_X_hat_minus[0],(s16)gyro_X_hat_minus[1],(s16)gyro_X_hat_minus[2],(s16)gyro[0]-gyro_chushi[0],(s16)gyro[1]-gyro_chushi[1],(s16)gyro[2]-gyro_chushi[2],(s32) MS5611_Pressure);
 
-                ANO_DT_Send_Senser((s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)gyro_X_hat_minus[0], (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyro[0] - gyro_chushi[0], (s16)gyro[1] - gyro_chushi[1], (s16)gyro[2] - gyro_chushi[2], (s32) MS5611_Pressure);
-
+                //ANO_DT_Send_Senser((s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)gyro_X_hat_minus[0], (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyro[0] - gyro_chushi[0], (s16)gyro[1] - gyro_chushi[1], (s16)gyro[2] - gyro_chushi[2], (s32) MS5611_Pressure);
+				
+				 ANO_DT_Send_Senser((s16)cNd1_alpha,(s16)cNd2_alpha,(s16)cNd3_alpha,(s16)cNd4_alpha,(s16)cNd1_omega,(s16)cNd2_omega,(s16)cNd3_omega,(s16)cNd4_omega,(s16)0,(s32)0);
+				
                 //ANO_DT_Send_Senser((s16)aacx * 0.05978, (s16)aacy * 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)Scd, (s16)Ahd, (s16)0, (s32)MS5611_Altitude * 100); //over 0.5ms
                 //ANO_DT_Send_Senser(accx_X_hat_minus, accy_X_hat_minus, accz_X_hat_minus, gyrox_out, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
                 //ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
