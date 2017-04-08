@@ -19,7 +19,7 @@ extern float gyrox_sd, gyroy_sd, gyroz_sd; //将袁术数据转换为表准数据，以度计
 extern float gyrox_sr_kf, gyroy_sr_kf, gyroz_sr_kf; //卡尔曼滤波后的值
 
 extern int32_t  TEMP;					//气压计温度
-extern float MS561101BA_get_altitude(void);//获得高度，其实是计算出高度
+extern float MS561101BA_get_altitude(float scaling);//获得高度，其实是计算出高度
 extern uint32_t Pressure;				//大气压//单位0.01mbar
 extern int32_t  TEMP;					//气压计温度
 
@@ -66,6 +66,8 @@ u32 tim4_T2;
 u32 tim4_T3;
 u32 tim4_T4;
 
+extern u32 yibaihaomiao2;
+
 extern u32 channel1_in, channel2_in, channel3_in, channel4_in; 				//收到的遥控占空比(1000~2000)
 
 //定时器五计时初始化上端
@@ -86,8 +88,8 @@ void TIM5_Int_Init(u16 arr, u16 psc)
     TIM_ITConfig( TIM5, TIM_IT_Update , ENABLE );
 
     NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;  //先占优先级0级
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;  //从优先级0级
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;  //先占优先级
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;  //从优先级
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; //IRQ通道被使能
     NVIC_Init(&NVIC_InitStructure);  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
 
@@ -95,6 +97,25 @@ void TIM5_Int_Init(u16 arr, u16 psc)
 }
 
 //定时器五计时初始化下端
+
+extern float scaling;
+extern float MS5611_Pressure;
+extern float Pressure_chushi;
+extern void Altitude_filter(void);
+extern float acc_Climb_out;
+extern float Altitude_out;
+extern float Altitude_minus;
+extern void Kalman_filter_alt(void);
+extern float pressure_X_hat_minus;
+extern float pressure_X_hat;
+extern float Altitude_X_hat;
+extern float Altitude_X_hat_minus;
+extern void Derivative_Filter(void);
+extern float Altitude_samples[7];
+extern u8 Altitude_sample_index;
+extern float Altitude_samples_time_stamps[7];
+extern void Kalman_filter_climb(void);
+extern u8 Altitude_samples_full;
 
 void TIM5_IRQHandler(void)   //TIM5中断,每过一毫秒就搞一次
 {

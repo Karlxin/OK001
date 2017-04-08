@@ -53,10 +53,12 @@ float kp_alpha_x = 0.03, kp_alpha_y = 0.03, kp_alpha_z = 0;
 //0.5*1000=500;
 //consideration of mass of 1837g for MATLAB theory
 //velocity and accelerate in centimeter
-float KP_VEL_Z = 5 * 0.5443658;
-float kp_vel_Z = 5 * 0.5443658;
-float KP_ACC_Z = 0.5 * 0.5443658;
-float kp_acc_Z = 0.5 * 0.5443658;
+//velocity between 0~50,10Hz,5
+//accelerate between 0~100,10Hz,10
+float KP_VEL_Z = 0.5;
+float kp_vel_z = 0.5;
+float KP_ACC_Z = 0.5 * 0.05978;
+float kp_acc_z = 0.5 * 0.05978;
 //PD controller bottom
 
 extern float roll_err, pitch_err, yaw_err;
@@ -176,9 +178,9 @@ void cyberNation_alpha(void)
 #define Filter_Num 6//sliding window with 6 values
 void Gyro_filter(void)
 {
-    static short Filter_x[Filter_Num], Filter_y[Filter_Num], Filter_z[Filter_Num];
+    static float Filter_x[Filter_Num], Filter_y[Filter_Num], Filter_z[Filter_Num];
     static uint8_t Filter_count;
-    int32_t Filter_sum_x = 0, Filter_sum_y = 0, Filter_sum_z = 0;
+    float Filter_sum_x = 0, Filter_sum_y = 0, Filter_sum_z = 0;
     uint8_t i;
 
     Filter_x[Filter_count] = gyro[0] - gyro_chushi[0];
@@ -204,12 +206,12 @@ void Gyro_filter(void)
     }
 }
 
-#define Filter_Num2 10//sliding window with <input> values
+#define Filter_Num2 6//sliding window with <input> values
 void Accz_filter(void)
 {
-    static short Filter_accz[Filter_Num2];
+    static float Filter_accz[Filter_Num2];
     static uint8_t Filter_count2;
-    int32_t Filter_sum_accz = 0;
+    float Filter_sum_accz = 0;
     uint8_t i;
 
     Filter_accz[Filter_count2] = aacz-aacz_chushi;
@@ -219,7 +221,7 @@ void Accz_filter(void)
         Filter_sum_accz += Filter_accz[i];
     }
 
-    accz_out = Filter_sum_accz / Filter_Num;
+    accz_out = Filter_sum_accz / Filter_Num2;
 
     Filter_count2++;
 
@@ -229,7 +231,7 @@ void Accz_filter(void)
     }
 }
 
-#define Filter_Num3 12//sliding window with 6 values
+#define Filter_Num3 1//sliding window with 6 values
 void Altitude_filter(void)
 {
     static float Filter_Altitude[Filter_Num3];//if use integer,we will lose the value
@@ -290,7 +292,7 @@ void Kalman_filter_accz(void)
 
     //predict update
     accz_K = accz_P / (accz_P + accz_R);
-    accz_X_hat = accz_X_hat_minus + accz_K * (aacz - accz_X_hat_minus);
+    accz_X_hat = accz_X_hat_minus + accz_K * (aacz- accz_X_hat_minus);
     accz_P = (1 - accz_K) * accz_P;
 }
 
@@ -342,7 +344,7 @@ void Altitude_hold_update(void)
 {
     if(desroll<0.5&&despitch<0.5)
     {
-        Ahd = -kp_vel_Z * acc_Climb_out - kp_acc_Z *accz_out;
+        Ahd = -kp_vel_z * acc_Climb_out - kp_acc_z *accz_out;
     }
     Ahd = 0; 
 }

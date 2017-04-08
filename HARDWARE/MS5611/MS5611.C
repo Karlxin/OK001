@@ -200,10 +200,11 @@ void MS561101BA_getPressure(void)
 
     MS5611_Pressure =  ((D1_Pres * SENS >> 21) - OFF_) >> 15;
 }
-
-void MS561101BA_get_altitude(void)
+//return in centimeter
+float MS561101BA_get_altitude(float scaling)
 {
-    MS5611_Altitude = 153.8462f * temp_jisuan * (1.0f - expf(0.190259f * logf(scaling)));
+    MS5611_Altitude = 15384.62f * temp_jisuan * (1.0f - expf(0.190259f * logf(scaling)));
+	return MS5611_Altitude;
 }
 
 extern float Altitude_dt;
@@ -236,6 +237,7 @@ extern float Climb_X_hat_minus;//previous predict
 extern float Climb_P;//error variance
 
 extern float Altitude_minus;
+extern float acc_Climb_out;
 
 void Kalman_filter_climb(void)
 {
@@ -245,7 +247,7 @@ void Kalman_filter_climb(void)
 
     //predict update
     Climb_K = Climb_P / (Climb_P + Climb_R);
-    Climb_X_hat = Climb_X_hat_minus + Climb_K * ((MS5611_Altitude - Altitude_minus) / Altitude_dt - Climb_X_hat_minus);
+    Climb_X_hat = Climb_X_hat_minus + Climb_K * (acc_Climb_out - Climb_X_hat_minus);
     Climb_P = (1 - Climb_K) * Climb_P;
 }
 
@@ -272,8 +274,20 @@ void Kalman_filter_pressure(void)
     pressure_P = (1 - pressure_K) * pressure_P;
 }
 
+extern float Altitude_samples[7];
+extern u8 Altitude_sample_index;
+extern float Altitude_samples_time_stamps[7];
 
+#define SAMPLES_RANGE 7
+#define f(i) Altitude_samples[(((i+1)+3*SAMPLES_RANGE/2)%SAMPLES_RANGE)]
+#define x(i) Altitude_samples_time_stamps[(((i+1)+3*SAMPLES_RANGE/2)%SAMPLES_RANGE)]
 
+extern float acc_Climb_out;
 
+//acc_Climb_out in cm/s2
+void Derivative_Filter(void)
+{
+	acc_Climb_out=(10.0f*(f(1)-f(-1))/(x(1)-x(-1))+16.0f*(f(2)-f(-2))/(x(2)-x(-2))+6.0f*(f(3)-f(-3))/(x(3)-x(-3)))*0.03125f;
+}
 
 

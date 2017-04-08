@@ -73,6 +73,7 @@ u32 shihaomiao = 0; //ten milliseconds resolution
 u32 ershihaomiao = 0;
 u32 wushihaomiao = 0;
 u32 yibaihaomiao = 0;//hundred milliseconds resolution
+u32 yibaihaomiao2 = 0;
 u32 miaozhong = 0; //second resolution
 
 float roll, pitch, yaw;//Tait-Bryan angles φθψ,DMP hardware resolving ,roll,pitch,yaw
@@ -99,10 +100,10 @@ int16_t cNd1_alpha = 0, cNd2_alpha = 0, cNd3_alpha = 0, cNd4_alpha = 0; //cyberN
 
 u32 gyxt = 0; //gyroxitong,use for getting the gyrometer offset,it record the system time
 
-extern void MS561101BA_get_altitude(void);//calculate the altitude
+extern float MS561101BA_get_altitude(float scaling);//calculate the altitude
 
 float MS5611_Altitude;//using MS5611 pressure and temperature to calculate the Altitude.
-float Altitude_out=0;
+float Altitude_out = 0;
 
 extern void MS561101BA_getPressure(void);
 extern void MS561101BA_GetTemperature(void);
@@ -180,8 +181,8 @@ extern void Kalman_filter_alt(void);
 float Altitude_minus = 0;//last barometer altitude converted by pressure
 float Altitude_dt = 0.1;//the delta time
 u32 Altitude_temp_time = 0; //record the time
-float Altitude_R = 0.2; //measurement variance ±0.2m
-float Altitude_Q = 0.0169; //process variance 1.3/10=0.13 0.13^2=0.0169
+float Altitude_R = 20; //measurement variance ±20cm
+float Altitude_Q = 0.09; //process variance 3/10=0.3
 float Altitude_K = 0; //kalman gain
 float Altitude_X_hat = 0; //init predict
 float Altitude_X_hat_minus = 0; //previous predict
@@ -190,20 +191,20 @@ float Altitude_P = 0; //error variance
 
 //---Climb Karlman top
 extern void Kalman_filter_climb(void);
-float Climb_R = 0.03; //3sigma 0.03*3=0.09,measuring variance.
-float Climb_Q = 0.0004; //process Variance
+float Climb_R = 7; //positive negative 20cm
+float Climb_Q = 0.09; //process Variance,3/10=0.3
 float Climb_K = 0; //kalman gain
 float Climb_X_hat = 0; //init predict for Climb rate
 float Climb_X_hat_minus = 0; //previous predict for Climb rate
-float Climb_P = 1; //error variance
+float Climb_P = 0; //error variance
 //---Climb karlman bottom
 
 //---Kalman_filter_accz top
 extern void Kalman_filter_accz(void);
 float accz_dt = 0.01; //the delta time
 u32 accz_temp_time = 0; //the record time
-float accz_R = 23; //3sigma 23*3=69;
-float accz_Q = 0.01; //process Variance
+float accz_R = 83; //positive negative 67,measurement variance
+float accz_Q = 0.1118; //process Variance
 float accz_K = 0; //kalman gain
 float accz_X_hat = 15300; //init predict for accz
 float accz_X_hat_minus = 0; //previous predict for accz
@@ -242,12 +243,12 @@ float accx_P = 140; //error variance
 extern void Kalman_filter_pressure(void);
 float pressure_dt = 0.01; //the delta time
 u32 pressure_temp_time = 0; //the record time
-float pressure_R = 7; //3sigma 7*3=21
-float pressure_Q = 0.0004; //process Variance
+float pressure_R = 20; //3sigma 7*3=21
+float pressure_Q = 0.0169; //process Variance
 float pressure_K = 0; //kalman gain
-float pressure_X_hat = 103050; //init predict
+float pressure_X_hat = 0; //init predict
 float pressure_X_hat_minus = 0; //previous predict
-float pressure_P = 40; //error variance
+float pressure_P = 0.1; //error variance
 //---pressure kalman bottom
 
 //---gyrometer kalman top
@@ -281,13 +282,20 @@ extern void cyberNation_theta(void);
 extern void cyberNation_omega(void);
 extern void cyberNation_alpha(void);
 
-float alphax_out=0;
-float alphay_out=0;
-float alphaz_out=0;
+float alphax_out = 0;
+float alphay_out = 0;
+float alphaz_out = 0;
 
 extern void Altitude_filter(void);
 
 extern void Filter_Altitude(void);
+
+float Altitude_samples[7] = {0, 0, 0, 0, 0, 0, 0};
+float Altitude_samples_time_stamps[7] = {0, 0, 0, 0, 0, 0, 0};
+u8 Altitude_sample_index = 0;
+u8 Altitude_samples_full = 0;
+
+extern void Derivative_Filter(void);
 
 int main(void)
 {
@@ -295,7 +303,7 @@ int main(void)
     u8 jiesuokeyi = 0;//sign for ARMED
     u16 baochijiesuo = 0;//counter for holding ARMED channel input
     u16 baochijiasuo = 0;//counter for holding DISARMED channel input
-	u8 flymode=0;
+    u8 flymode = 0;
     int16_t temp1, temp2,  desthrottle, temp4; //to convert channel pulse width modulation wave to expectation angle
     u8 i;//for for loop
     u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
@@ -334,17 +342,10 @@ int main(void)
     MS561101BA_RESET();//over 0.35881ms
     delay_ms(100);
     MS5611_init();//over 0.0324s
-    delay_ms(1000);
-
-    TIM4_Cap_Init(0xffff, 72 - 1); //pulse width modulation capturer,1MHz,over 0.02819ms
-    TIM5_Int_Init(9, 719); //system timer,resolution of 0.1ms
-
     delay_ms(300);
 
 
-    //record the data of gyrometer averaged by 2 using 3s
-    gyxt = xitongshijian; //record the system time,over 0.00172ms
-    while(xitongshijian * 0.001f < gyxt * 0.001f + 3)
+    for(i = 0; i < 100; i++)
     {
         if(!MPU_Get_Gyroscope(&gyrox, &gyroy, &gyroz))//get gyrometer raw data
         {
@@ -360,7 +361,7 @@ int main(void)
             temp_azc = ((float)aacz + temp_azc) * 0.5;
             Kalman_filter_accz();//call the Kalman filter
         }
-    }//over 3s
+    }
     gyro_chushi[0] = (short)temp_gyxc;//record the initial data,over 0.00211ms
     gyro_chushi[1] = (short)temp_gyyc;
     gyro_chushi[2] = (short)temp_gyzc;
@@ -380,20 +381,6 @@ int main(void)
     TEMP_chushi = (int32_t)temp_TEMP;//over 0.00203ms
     temp_jisuan    = (float)TEMP_chushi / 100.00 + 273.15f;//for the altitude conversion
 
-    for(i = 0; i < 20; i++)
-    {
-        delay_ms(100);
-
-        MS561101BA_getPressure();//over 9.7ms
-        Kalman_filter_pressure();
-    }//over 2.1945s
-
-    Pressure_chushi = pressure_X_hat_minus;
-
-    scaling = pressure_X_hat_minus / Pressure_chushi;//for the altitude conversion
-    MS561101BA_get_altitude();//over 0.02ms
-    Altitude_chushi = MS5611_Altitude;
-
     if(USART1_Open)
     {
         Uart1_Init(500000);//anonymous 4.06
@@ -403,11 +390,18 @@ int main(void)
         Uart1_Init(115200);//ATKXCOMV2.0
     }
 
-    //Calculate_FilteringCoefficient(0.0050000, 10.0000000);//calculating aacz using low pass filter
+    delay_ms(10);
+
+    TIM4_Cap_Init(0xffff, 72 - 1); //pulse width modulation capturer,1MHz,over 0.02819ms
+    TIM5_Int_Init(9, 719); //system timer,resolution of 0.1ms
+
+    delay_ms(10);
 
     LED_Init();//over 0.01044ms
     LED0 = 1; //Darkening red LED,showing ARMED
     LED1 = 0; //Lightening green LED，showing DISARMED
+
+    delay_ms(10);
 
     haomiao = xitongshijian * 0.1f;
     erhaomiao = xitongshijian * 0.05f;//noticing that we disorder the schedule before
@@ -416,6 +410,7 @@ int main(void)
     ershihaomiao = xitongshijian * 0.005f;
     wushihaomiao = xitongshijian * 0.002f;
     yibaihaomiao = xitongshijian * 0.001f;
+    yibaihaomiao2 = xitongshijian * 0.001f;
     miaozhong = xitongshijian * 0.0001f;
     //------------------------------initiation bottom-----------------------------
 
@@ -430,8 +425,8 @@ int main(void)
             //read MPU top
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //get acc data,over 0.6ms
             {
-				Accz_filter();//sliding window filter
-                //Kalman_filter_accz();
+                Accz_filter();//sliding window filter
+                Kalman_filter_accz();
                 //accz_dt = (float)(xitongshijian - accz_temp_time) * 0.0001;//how much time between two visit
                 //accz_temp_time = xitongshijian;//record the time
                 //acc_Climb += (accz_X_hat_minus - aacz_chushi) * 0.0005978 * accz_dt;//accelerometer integral
@@ -524,10 +519,10 @@ int main(void)
                 }
                 else//channel3<1100
                 {
-                    d1=0;
-					d2=0;
-					d3=0;
-					d4=0;
+                    d1 = 0;
+                    d2 = 0;
+                    d3 = 0;
+                    d4 = 0;
                     Moto_PwmRflash(0, 0, 0, 0);//core 1 called in place 1
                 }
 
@@ -551,10 +546,10 @@ int main(void)
             }
             else//解锁不可以
             {
-                d1=0;
-				d2=0;
-				d3=0;
-				d4=0;
+                d1 = 0;
+                d2 = 0;
+                d3 = 0;
+                d4 = 0;
                 Moto_PwmRflash(0, 0, 0, 0);//全部油门最小化,over 0.02ms,core 1 called in 2 place
 
                 if(channel3_in < 1100 && channel4_in > 1900)//油门小于1100，偏航角大于1900,也就是油门最下，偏航最右
@@ -579,11 +574,11 @@ int main(void)
             if(channel3_in > 1100)//only when channel3 >1100 will update motor controlling
             {
                 //cyberNation();//update motor,over 0.06ms
-				//cyberNation_alpha();
-				cyberNation_omega();
+                //cyberNation_alpha();
+                cyberNation_omega();
                 cyberNation_theta();
                 Sink_compensation();//sink offset superposition
-				Altitude_hold_update();//altitude holding superposition
+                Altitude_hold_update();//altitude holding superposition
                 Moto_Throttle(desthrottle);//core 2 called in 1 place
             }
             //-----------------------------Control and Throttle update bottom--------------------------------------------
@@ -614,9 +609,9 @@ int main(void)
                 //ANO_DT_Send_Senser((s16)aacx,(s16)aacy,(s16)aacz,(s16)gyro_X_hat_minus[0],(s16)gyro_X_hat_minus[1],(s16)gyro_X_hat_minus[2],(s16)gyro[0]-gyro_chushi[0],(s16)gyro[1]-gyro_chushi[1],(s16)gyro[2]-gyro_chushi[2],(s32) MS5611_Pressure);
 
                 //ANO_DT_Send_Senser((s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)gyro_X_hat_minus[0], (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyro[0] - gyro_chushi[0], (s16)gyro[1] - gyro_chushi[1], (s16)gyro[2] - gyro_chushi[2], (s32) MS5611_Pressure);
-				
-				 ANO_DT_Send_Senser((s16)(Altitude_out*100),(s16)(acc_Climb_out*100),(s16)(accz_out*0.0598145),(s16)gyrox_out,(s16)gyroy_out,(s16)gyroz_out,(s16)Ahd,(s16)0,(s16)0,(s32)0);
-				
+
+                ANO_DT_Send_Senser((s16)((accz_X_hat_minus-aacz_chushi)* 0.05978) ,(s16)((aacz-aacz_chushi)* 0.05978), (s16)(accz_out*0.05978), (s16)0, (s16)gyroy_out, (s16)gyroz_out, (s16)Ahd, (s16)0, (s16)0, (s32)0);
+
                 //ANO_DT_Send_Senser((s16)aacx * 0.05978, (s16)aacy * 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)Scd, (s16)Ahd, (s16)0, (s32)MS5611_Altitude * 100); //over 0.5ms
                 //ANO_DT_Send_Senser(accx_X_hat_minus, accy_X_hat_minus, accz_X_hat_minus, gyrox_out, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
                 //ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
@@ -637,27 +632,33 @@ int main(void)
             yibaihaomiao = xitongshijian * 0.001f; //visit by hundred milliseconds resolution
             debug[6]++;
 
-            //MS561101BA_GetTemperature();//over 9.1ms
             MS561101BA_getPressure();//over 9.1ms
-            //Kalman_filter_pressure();
-            //scaling = pressure_X_hat_minus / Pressure_chushi;//using to calculate the height
-			scaling = MS5611_Pressure / Pressure_chushi;
-			
-            MS561101BA_get_altitude();//0.02ms
-			Altitude_filter();
-            //Kalman_filter_alt();//0.01ms
-            Altitude_dt = 0.001f * (float)(xitongshijian - Altitude_temp_time);
-            Altitude_temp_time = xitongshijian;
-			acc_Climb_out=(Altitude_out - Altitude_minus) / Altitude_dt;
-			
-            //Kalman_filter_climb();
-            //complementation_filter();//update acc_Climb_err
-            //ANO_DT_Send_Senser(aacx-aacx_chushi, aacy-aacy_chushi, acc_Climb_X_hat_minus-aacz_chushi, gyrox_out, gyroy_out, gyroz_out, (s16)0, (s16)0, (s16)0, (s32)MS5611_Pressure);
-            //ANO_DT_Send_Status(MS5611_Altitude-Altitude_chushi, Altitude_X_hat_minus-Altitude_chushi, (Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
-            //ANO_DT_Send_Status((Altitude_X_hat-Altitude_X_hat_minus)/Altitude_dt, acc_Climb, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0);//over 0.4ms
-
-            //ANO_DT_Send_Status(acc_Climb, acc_Climb_out, Climb_X_hat_minus, (s32)MS5611_Altitude, (u8)0, (u8)0); //over 0.4ms
-            Altitude_minus = Altitude_out;
+            if(yibaihaomiao < 100)
+            {
+                Pressure_chushi = 0.5 * (Pressure_chushi + MS5611_Pressure);
+            }
+            else
+            {
+                Altitude_out = MS561101BA_get_altitude(MS5611_Pressure / Pressure_chushi);
+                Kalman_filter_alt();
+                Altitude_samples[Altitude_sample_index] = Altitude_X_hat_minus;
+                //Altitude_samples[Altitude_sample_index] = Altitude_out;
+                Altitude_samples_time_stamps[Altitude_sample_index] = xitongshijian * 0.0001f;
+                Altitude_sample_index++;
+                if(Altitude_sample_index == 7)
+                {
+                    Altitude_sample_index = 0;
+                    if(!Altitude_samples_full)
+                    {
+                        Altitude_samples_full = 1;
+                    }
+                }
+                if(Altitude_samples_full)
+                {
+                    Derivative_Filter();
+                    Kalman_filter_climb();
+                }
+            }
         }
         //hundred ms bottom
 
