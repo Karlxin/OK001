@@ -3,7 +3,7 @@ Started at 2016
 Created by Karlxin(410824290@qq.com)
 Github:https://github.com/Karlxin/OK001.git
 OpenKarlCopter
-Version:dev_002
+Version:dev_003
 
 features:To be continued...
 
@@ -49,21 +49,14 @@ extern void TIM5_Int_Init(u16 arr, u16 psc);
 extern void Moto_Throttle(int16_t desthrottle);
 extern void MS5611_init(void);
 extern void IIC_Init(void);
-
-u32 channel1_in, channel2_in, channel3_in, channel4_in;//between 1000~2000
-
 extern void MS561101BA_RESET(void);
 
 extern void ANO_DT_Send_MotoPWM(u16 m_1, u16 m_2, u16 m_3, u16 m_4, u16 m_5, u16 m_6, u16 m_7, u16 m_8);
 extern void ANO_DT_Send_Senser(s16 a_x, s16 a_y, s16 a_z, s16 g_x, s16 g_y, s16 g_z, s16 m_x, s16 m_y, s16 m_z, s32 bar);
 extern void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw, s32 alt, u8 fly_model, u8 armed);
-extern void ag2q2rpy(float gx, float gy, float gz, float ax, float ay, float az, float *pitch, float *roll, float *yaw);
-extern float KalmanFilter(const float ResrcData, float ProcessNiose_Q, float MeasureNoise_R, float InitialPrediction);
 
 extern u8 MPU_Init(void);
 extern u8 mpu_dmp_init(void);
-
-extern u8 ARMED;
 
 u32 xitongshijian = 0; //system timer,resolution of 0.1ms,119hour
 u32 haomiao = 0; //millisecond resolution
@@ -75,6 +68,17 @@ u32 wushihaomiao = 0;
 u32 yibaihaomiao = 0;//hundred milliseconds resolution
 u32 yibaihaomiao2 = 0;
 u32 miaozhong = 0; //second resolution
+u32 ermiaozhong = 0;
+u32 wumiaozhong = 0;
+u32 shimiaozhong = 0;
+u32 ershimiaozhong = 0;
+u32 wushimiaozhong = 0;
+u32 yibaimiaozhong = 0;
+u32 erbaimiaozhong = 0;
+u32 wubaimiaozhong = 0;
+u32 yiqianmiaozhong = 0;
+
+u32 channel1_in, channel2_in, channel3_in, channel4_in;//between 1000~2000
 
 float roll, pitch, yaw;//Tait-Bryan angles φθψ,DMP hardware resolving ,roll,pitch,yaw
 short aacx, aacy, aacz;//accelerometer raw data
@@ -97,8 +101,6 @@ int16_t deadzone = 20; //remote controller deadzone
 int16_t cNd1_theta = 0, cNd2_theta = 0, cNd3_theta = 0, cNd4_theta = 0; //cyberNation
 int16_t cNd1_omega = 0, cNd2_omega = 0, cNd3_omega = 0, cNd4_omega = 0; //cyberNation
 int16_t cNd1_alpha = 0, cNd2_alpha = 0, cNd3_alpha = 0, cNd4_alpha = 0; //cyberNation
-
-u32 gyxt = 0; //gyroxitong,use for getting the gyrometer offset,it record the system time
 
 extern float MS561101BA_get_altitude(float scaling);//calculate the altitude
 
@@ -127,13 +129,11 @@ extern void Accz_filter(void);
 float ACC_IIR_FACTOR;
 extern void Calculate_FilteringCoefficient(float Time, float Cut_Off);
 extern void ACC_IIR_Filter(void);
-extern int16_t Throttle_constrain(int16_t Throttle);
 
 extern void Altitude_hold_update(void);
 
 //-----------barometer top
 int64_t OFF_;
-
 
 /*
 C1 压力灵敏度 SENS|T1
@@ -144,7 +144,6 @@ C5  参考温度 T|REF
 C6  温度系数的温度 TEMPSENS
 */
 uint16_t  Cal_C[7];//用于存放PROM中的6组数据1-6
-
 uint32_t D1_Pres, D2_Temp;//数字压力值,数字温度值
 
 /*
@@ -182,7 +181,7 @@ float Altitude_minus = 0;//last barometer altitude converted by pressure
 float Altitude_dt = 0.1;//the delta time
 u32 Altitude_temp_time = 0; //record the time
 float Altitude_R = 20; //measurement variance ±20cm
-float Altitude_Q = 0.09; //process variance 3/10=0.3
+float Altitude_Q = 0.01; //process variance 1/2*5*0.1^2
 float Altitude_K = 0; //kalman gain
 float Altitude_X_hat = 0; //init predict
 float Altitude_X_hat_minus = 0; //previous predict
@@ -191,8 +190,8 @@ float Altitude_P = 0; //error variance
 
 //---Climb Karlman top
 extern void Kalman_filter_climb(void);
-float Climb_R = 7; //positive negative 20cm
-float Climb_Q = 0.09; //process Variance,3/10=0.3
+float Climb_R = 7;
+float Climb_Q = 0.01; //process Variance,3/10=0.3
 float Climb_K = 0; //kalman gain
 float Climb_X_hat = 0; //init predict for Climb rate
 float Climb_X_hat_minus = 0; //previous predict for Climb rate
@@ -200,20 +199,26 @@ float Climb_P = 0; //error variance
 //---Climb karlman bottom
 
 //---Kalman_filter_accz top
-extern void Kalman_filter_accz(void);
+extern void Kalman_filter_accz(void);//in 32767
 float accz_dt = 0.01; //the delta time
 u32 accz_temp_time = 0; //the record time
 float accz_R = 83; //positive negative 67,measurement variance
-float accz_Q = 0.1118; //process Variance
+float accz_Q = 0.01347916; //process Variance
 float accz_K = 0; //kalman gain
 float accz_X_hat = 15300; //init predict for accz
 float accz_X_hat_minus = 0; //previous predict for accz
 float accz_P = 140; //error variance
 
-float acc_Climb = 0; //the climb rate
+float acc_Climb_rate = 0; //the climb rate
 float acc_Climb_err = 0;
 float acc_Climb_out = 0;
+float acc_Climb_rate_out = 0;
 //---Kalman_filter_accz bottom
+
+float rate2 = 0;
+float errInt2 = 0;
+float accz_IMU = 0;
+float err_rate1_rate2 = 0;
 
 //---Kalman_filter_accy top
 extern void Kalman_filter_accy(void);
@@ -297,6 +302,10 @@ u8 Altitude_samples_full = 0;
 
 extern void Derivative_Filter(void);
 
+extern void IMUupdate2(void);
+
+
+
 int main(void)
 {
     //------------------------------initiation top------------------------------
@@ -309,6 +318,7 @@ int main(void)
     u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
     u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
+    u32 climb_rate_time = 0;
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0，1，2，3；subclass by 0,1(2:0),over 0.0004ms
@@ -412,25 +422,33 @@ int main(void)
     yibaihaomiao = xitongshijian * 0.001f;
     yibaihaomiao2 = xitongshijian * 0.001f;
     miaozhong = xitongshijian * 0.0001f;
+    ermiaozhong = xitongshijian * 0.00005f;
+    wumiaozhong = xitongshijian * 0.00002f;
+    shimiaozhong = xitongshijian * 0.00001f;
+    ershimiaozhong = xitongshijian * 0.000005f;
+    wushimiaozhong = xitongshijian * 0.000002f;
+    yibaimiaozhong = xitongshijian * 0.000001f;
+    erbaimiaozhong = xitongshijian * 0.0000005f;
+    wubaimiaozhong = xitongshijian * 0.0000002f;
+    yiqianmiaozhong = xitongshijian * 0.0000001f;
     //------------------------------initiation bottom-----------------------------
 
-    while(1)//using 12s to get there
+    while(1)//using 8s to get there
     {
         //ms top
         if(xitongshijian * 0.1f > haomiao + 1)
         {
             haomiao = xitongshijian * 0.1f;
-            debug[0]++;
+            //debug[0]++;
 
             //read MPU top
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //get acc data,over 0.6ms
             {
                 Accz_filter();//sliding window filter
                 Kalman_filter_accz();
-                //accz_dt = (float)(xitongshijian - accz_temp_time) * 0.0001;//how much time between two visit
-                //accz_temp_time = xitongshijian;//record the time
-                //acc_Climb += (accz_X_hat_minus - aacz_chushi) * 0.0005978 * accz_dt;//accelerometer integral
-                //acc_Climb_out = acc_Climb - acc_Climb_err; //error adjust by using baro derivative.
+                accz_dt = (xitongshijian - accz_temp_time) * 0.0001;
+                accz_temp_time = xitongshijian;
+                acc_Climb_rate += (accz_X_hat_minus - aacz_chushi) * 0.0596942 * accz_dt;
             }
 
             if(!MPU_Get_Gyroscope(&gyro[0], &gyro[1], &gyro[2]))  //get gyro data,over 0.6ms
@@ -452,7 +470,7 @@ int main(void)
         if(xitongshijian * 0.05f > erhaomiao + 1)
         {
             erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
-            debug[1]++;
+            //debug[1]++;
         }
         //two ms bottom
 
@@ -460,7 +478,7 @@ int main(void)
         if(xitongshijian * 0.02f > wuhaomiao + 1)
         {
             wuhaomiao = xitongshijian * 0.02f; //visiting by five milliseconds resolution
-            debug[2]++;
+            //debug[2]++;
 
             mpu_dmp_get_data(&pitch, &roll, &yaw);//over amazing 52ms,move 50ms delay and we got 2.1ms,use dmp hardware
             roll_err = roll - desroll; //get roll_err
@@ -474,7 +492,7 @@ int main(void)
         if(xitongshijian * 0.01f > shihaomiao + 1)
         {
             shihaomiao = xitongshijian * 0.01f; //visiting by ten milliseconds resolution
-            debug[3]++;
+            //debug[3]++;
 
             //-----------------------------Control and Throttle update top----------------------------------------------
             if(jiesuokeyi) //if ARMED,over 0.01204ms
@@ -571,14 +589,14 @@ int main(void)
                 }
             }
 
-            if(channel3_in > 1100)//only when channel3 >1100 will update motor controlling
+            if(channel3_in > 1100 && jiesuokeyi) //only when channel3 >1100 and jiesuokeyi will update motor controlling
             {
                 //cyberNation();//update motor,over 0.06ms
-                //cyberNation_alpha();
+                //cyberNation_alpha();//noise is too big
                 cyberNation_omega();
                 cyberNation_theta();
                 Sink_compensation();//sink offset superposition
-                Altitude_hold_update();//altitude holding superposition
+                //Altitude_hold_update();//altitude holding superposition
                 Moto_Throttle(desthrottle);//core 2 called in 1 place
             }
             //-----------------------------Control and Throttle update bottom--------------------------------------------
@@ -590,7 +608,9 @@ int main(void)
         if(xitongshijian * 0.005f > ershihaomiao + 1)
         {
             ershihaomiao = xitongshijian * 0.005f; //visiting by twenty milliseconds resolution
-            debug[4]++;
+            //debug[4]++;
+			
+			Altitude_hold_update();//this frequency may be enough.
         }
         //twenty ms bottom
 
@@ -598,20 +618,18 @@ int main(void)
         if(xitongshijian * 0.002f > wushihaomiao + 1)
         {
             wushihaomiao = xitongshijian * 0.002f; //visiting by fifty milliseconds resolution
-            debug[5]++;
+            //debug[5]++;
 
             //serial top
             if(USART1_Open)
             {
-                ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi);//over 0.4ms
+                ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude * 100, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
                 ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
+
                 //ANO_DT_Send_Senser((s16)aacx,(s16)aacy,(s16)aacz,(s16)gyro_X_hat_minus[0],(s16)gyro_X_hat_minus[1],(s16)gyro_X_hat_minus[2],(s16)gyro[0]-gyro_chushi[0],(s16)gyro[1]-gyro_chushi[1],(s16)gyro[2]-gyro_chushi[2],(s32) MS5611_Pressure);
-
                 //ANO_DT_Send_Senser((s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)gyro_X_hat_minus[0], (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyro[0] - gyro_chushi[0], (s16)gyro[1] - gyro_chushi[1], (s16)gyro[2] - gyro_chushi[2], (s32) MS5611_Pressure);
-
-                ANO_DT_Send_Senser((s16)((accz_X_hat_minus-aacz_chushi)* 0.05978) ,(s16)((aacz-aacz_chushi)* 0.05978), (s16)(accz_out*0.05978), (s16)0, (s16)gyroy_out, (s16)gyroz_out, (s16)Ahd, (s16)0, (s16)0, (s32)0);
-
+                ANO_DT_Send_Senser((s16)acc_Climb_rate , (s16)acc_Climb_out, (s16)(accz_X_hat_minus - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)Ahd, (s16)0, (s16)0, (s32)MS5611_Altitude * 100);
                 //ANO_DT_Send_Senser((s16)aacx * 0.05978, (s16)aacy * 0.05978, (s16)aacz * 0.05978, gyrox_out, gyroy_out, gyroz_out, (s16)Scd, (s16)Ahd, (s16)0, (s32)MS5611_Altitude * 100); //over 0.5ms
                 //ANO_DT_Send_Senser(accx_X_hat_minus, accy_X_hat_minus, accz_X_hat_minus, gyrox_out, gyroy_out, gyroz_out,(s16)Scd,(s16)0,(s16)0,(s32)0);//over 0.5ms
                 //ANO_DT_Send_Status(acc_Climb*100, acc_Climb_out*100, Climb_X_hat_minus*100, (s32)MS5611_Altitude*100, (u8)0, (u8)0); //over 0.4ms
@@ -630,7 +648,7 @@ int main(void)
         if(xitongshijian * 0.001f > yibaihaomiao + 1)
         {
             yibaihaomiao = xitongshijian * 0.001f; //visit by hundred milliseconds resolution
-            debug[6]++;
+            //debug[6]++;
 
             MS561101BA_getPressure();//over 9.1ms
             if(yibaihaomiao < 100)
@@ -666,8 +684,11 @@ int main(void)
         if(xitongshijian * 0.0001f > miaozhong + 1)
         {
             miaozhong = xitongshijian * 0.0001f; //visit by seconds resolution
-            debug[7]++;
-
+            //debug[7]++;
+            if(miaozhong / 8 > climb_rate_time + 1)//for climb rate
+            {
+                complementation_filter();
+            }
 
             //printf("  TEMP =%.2f℃\r\n", (float)TEMP / 100.00);
             //printf("  MS5611_Pressure =%fmbar\r\n", MS5611_Pressure / 100);
@@ -707,6 +728,16 @@ int main(void)
 
         }
         //seconds bottom
+
+        //five seconds top
+        if(xitongshijian * 0.00002f > wumiaozhong + 1)
+        {
+            wumiaozhong++;
+        }
+        //five seconds bottom
+
+
+
     }
 }
 

@@ -249,7 +249,8 @@
 
 #define DMP_CODE_SIZE           (3062)
 
-static const unsigned char dmp_memory[DMP_CODE_SIZE] = {
+static const unsigned char dmp_memory[DMP_CODE_SIZE] =
+{
     /* bank # 0 */
     0x00, 0x00, 0x70, 0x00, 0x00, 0x00, 0x00, 0x24, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00,
     0x00, 0x65, 0x00, 0x54, 0xff, 0xef, 0x00, 0x00, 0xfa, 0x80, 0x00, 0x0b, 0x12, 0x82, 0x00, 0x01,
@@ -480,7 +481,8 @@ static const unsigned short sStartAddress = 0x0400;
 #define QUAT_MAG_SQ_MAX         (QUAT_MAG_SQ_NORMALIZED + QUAT_ERROR_THRESH)
 #endif
 
-struct dmp_s {
+struct dmp_s
+{
     void (*tap_cb)(unsigned char count, unsigned char direction);
     void (*android_orient_cb)(unsigned char orientation);
     unsigned short orient;
@@ -498,13 +500,14 @@ struct dmp_s {
 //    .packet_length = 0
 //};
 
-static struct dmp_s dmp={
-  NULL,
-  NULL,
-  0,
-  0,
-  0,
-  0
+static struct dmp_s dmp =
+{
+    NULL,
+    NULL,
+    0,
+    0,
+    0,
+    0
 };
 
 /**
@@ -514,7 +517,7 @@ static struct dmp_s dmp={
 int dmp_load_motion_driver_firmware(void)
 {
     return mpu_load_firmware(DMP_CODE_SIZE, dmp_memory, sStartAddress,
-        DMP_SAMPLE_RATE);
+                             DMP_SAMPLE_RATE);
 }
 
 /**
@@ -547,15 +550,18 @@ int dmp_set_orientation(unsigned short orient)
 
     memcpy(gyro_regs, gyro_sign, 3);
     memcpy(accel_regs, accel_sign, 3);
-    if (orient & 4) {
+    if (orient & 4)
+    {
         gyro_regs[0] |= 1;
         accel_regs[0] |= 1;
     }
-    if (orient & 0x20) {
+    if (orient & 0x20)
+    {
         gyro_regs[1] |= 1;
         accel_regs[1] |= 1;
     }
-    if (orient & 0x100) {
+    if (orient & 0x100)
+    {
         gyro_regs[2] |= 1;
         accel_regs[2] |= 1;
     }
@@ -686,7 +692,8 @@ int dmp_set_accel_bias(long *bias)
 int dmp_set_fifo_rate(unsigned short rate)
 {
     const unsigned char regs_end[12] = {DINAFE, DINAF2, DINAAB,
-        0xc4, DINAAA, DINAF1, DINADF, DINADF, 0xBB, 0xAF, DINADF, DINADF};
+                                        0xc4, DINAAA, DINAF1, DINADF, DINADF, 0xBB, 0xAF, DINADF, DINADF
+                                       };
     unsigned short div;
     unsigned char tmp[8];
 
@@ -697,7 +704,7 @@ int dmp_set_fifo_rate(unsigned short rate)
     tmp[1] = (unsigned char)(div & 0xFF);
     if (mpu_write_mem(D_0_22, 2, tmp))
         return -1;
-    if (mpu_write_mem(CFG_6, 12, (unsigned char*)regs_end))
+    if (mpu_write_mem(CFG_6, 12, (unsigned char *)regs_end))
         return -1;
 
     dmp.fifo_rate = rate;
@@ -732,7 +739,8 @@ int dmp_set_tap_thresh(unsigned char axis, unsigned short thresh)
     scaled_thresh = (float)thresh / DMP_SAMPLE_RATE;
 
     mpu_get_accel_fsr(&accel_fsr);
-    switch (accel_fsr) {
+    switch (accel_fsr)
+    {
     case 2:
         dmp_thresh = (unsigned short)(scaled_thresh * 16384);
         /* dmp_thresh * 0.75 */
@@ -761,22 +769,25 @@ int dmp_set_tap_thresh(unsigned char axis, unsigned short thresh)
     tmp[2] = (unsigned char)(dmp_thresh_2 >> 8);
     tmp[3] = (unsigned char)(dmp_thresh_2 & 0xFF);
 
-    if (axis & TAP_X) {
+    if (axis & TAP_X)
+    {
         if (mpu_write_mem(DMP_TAP_THX, 2, tmp))
             return -1;
-        if (mpu_write_mem(D_1_36, 2, tmp+2))
+        if (mpu_write_mem(D_1_36, 2, tmp + 2))
             return -1;
     }
-    if (axis & TAP_Y) {
+    if (axis & TAP_Y)
+    {
         if (mpu_write_mem(DMP_TAP_THY, 2, tmp))
             return -1;
-        if (mpu_write_mem(D_1_40, 2, tmp+2))
+        if (mpu_write_mem(D_1_40, 2, tmp + 2))
             return -1;
     }
-    if (axis & TAP_Z) {
+    if (axis & TAP_Z)
+    {
         if (mpu_write_mem(DMP_TAP_THZ, 2, tmp))
             return -1;
-        if (mpu_write_mem(D_1_44, 2, tmp+2))
+        if (mpu_write_mem(D_1_44, 2, tmp + 2))
             return -1;
     }
     return 0;
@@ -883,7 +894,7 @@ int dmp_set_shake_reject_time(unsigned short time)
     time /= (1000 / DMP_SAMPLE_RATE);
     tmp[0] = time >> 8;
     tmp[1] = time & 0xFF;
-    return mpu_write_mem(D_1_90,2,tmp);
+    return mpu_write_mem(D_1_90, 2, tmp);
 }
 
 /**
@@ -901,7 +912,7 @@ int dmp_set_shake_reject_timeout(unsigned short time)
     time /= (1000 / DMP_SAMPLE_RATE);
     tmp[0] = time >> 8;
     tmp[1] = time & 0xFF;
-    return mpu_write_mem(D_1_88,2,tmp);
+    return mpu_write_mem(D_1_88, 2, tmp);
 }
 
 /**
@@ -919,7 +930,7 @@ int dmp_get_pedometer_step_count(unsigned long *count)
         return -1;
 
     count[0] = ((unsigned long)tmp[0] << 24) | ((unsigned long)tmp[1] << 16) |
-        ((unsigned long)tmp[2] << 8) | tmp[3];
+               ((unsigned long)tmp[2] << 8) | tmp[3];
     return 0;
 }
 
@@ -956,7 +967,7 @@ int dmp_get_pedometer_walk_time(unsigned long *time)
         return -1;
 
     time[0] = (((unsigned long)tmp[0] << 24) | ((unsigned long)tmp[1] << 16) |
-        ((unsigned long)tmp[2] << 8) | tmp[3]) * 20;
+               ((unsigned long)tmp[2] << 8) | tmp[3]) * 20;
     return 0;
 }
 
@@ -1012,20 +1023,26 @@ int dmp_enable_feature(unsigned short mask)
 
     /* Send sensor data to the FIFO. */
     tmp[0] = 0xA3;
-    if (mask & DMP_FEATURE_SEND_RAW_ACCEL) {
+    if (mask & DMP_FEATURE_SEND_RAW_ACCEL)
+    {
         tmp[1] = 0xC0;
         tmp[2] = 0xC8;
         tmp[3] = 0xC2;
-    } else {
+    }
+    else
+    {
         tmp[1] = 0xA3;
         tmp[2] = 0xA3;
         tmp[3] = 0xA3;
     }
-    if (mask & DMP_FEATURE_SEND_ANY_GYRO) {
+    if (mask & DMP_FEATURE_SEND_ANY_GYRO)
+    {
         tmp[4] = 0xC4;
         tmp[5] = 0xCC;
         tmp[6] = 0xC6;
-    } else {
+    }
+    else
+    {
         tmp[4] = 0xA3;
         tmp[5] = 0xA3;
         tmp[6] = 0xA3;
@@ -1033,27 +1050,31 @@ int dmp_enable_feature(unsigned short mask)
     tmp[7] = 0xA3;
     tmp[8] = 0xA3;
     tmp[9] = 0xA3;
-    mpu_write_mem(CFG_15,10,tmp);
+    mpu_write_mem(CFG_15, 10, tmp);
 
     /* Send gesture data to the FIFO. */
     if (mask & (DMP_FEATURE_TAP | DMP_FEATURE_ANDROID_ORIENT))
         tmp[0] = DINA20;
     else
         tmp[0] = 0xD8;
-    mpu_write_mem(CFG_27,1,tmp);
+    mpu_write_mem(CFG_27, 1, tmp);
 
     if (mask & DMP_FEATURE_GYRO_CAL)
         dmp_enable_gyro_cal(1);
     else
         dmp_enable_gyro_cal(0);
 
-    if (mask & DMP_FEATURE_SEND_ANY_GYRO) {
-        if (mask & DMP_FEATURE_SEND_CAL_GYRO) {
+    if (mask & DMP_FEATURE_SEND_ANY_GYRO)
+    {
+        if (mask & DMP_FEATURE_SEND_CAL_GYRO)
+        {
             tmp[0] = 0xB2;
             tmp[1] = 0x8B;
             tmp[2] = 0xB6;
             tmp[3] = 0x9B;
-        } else {
+        }
+        else
+        {
             tmp[0] = DINAC0;
             tmp[1] = DINA80;
             tmp[2] = DINAC2;
@@ -1062,7 +1083,8 @@ int dmp_enable_feature(unsigned short mask)
         mpu_write_mem(CFG_GYRO_RAW_DATA, 4, tmp);
     }
 
-    if (mask & DMP_FEATURE_TAP) {
+    if (mask & DMP_FEATURE_TAP)
+    {
         /* Enable tap. */
         tmp[0] = 0xF8;
         mpu_write_mem(CFG_20, 1, tmp);
@@ -1075,14 +1097,18 @@ int dmp_enable_feature(unsigned short mask)
         dmp_set_shake_reject_thresh(GYRO_SF, 200);
         dmp_set_shake_reject_time(40);
         dmp_set_shake_reject_timeout(10);
-    } else {
+    }
+    else
+    {
         tmp[0] = 0xD8;
         mpu_write_mem(CFG_20, 1, tmp);
     }
 
-    if (mask & DMP_FEATURE_ANDROID_ORIENT) {
+    if (mask & DMP_FEATURE_ANDROID_ORIENT)
+    {
         tmp[0] = 0xD9;
-    } else
+    }
+    else
         tmp[0] = 0xD8;
     mpu_write_mem(CFG_ANDROID_ORIENT_INT, 1, tmp);
 
@@ -1135,10 +1161,13 @@ int dmp_get_enabled_features(unsigned short *mask)
  */
 int dmp_enable_gyro_cal(unsigned char enable)
 {
-    if (enable) {
+    if (enable)
+    {
         unsigned char regs[9] = {0xb8, 0xaa, 0xb3, 0x8d, 0xb4, 0x98, 0x0d, 0x35, 0x5d};
         return mpu_write_mem(CFG_MOTION_BIAS, 9, regs);
-    } else {
+    }
+    else
+    {
         unsigned char regs[9] = {0xb8, 0xaa, 0xaa, 0xaa, 0xb0, 0x88, 0xc3, 0xc5, 0xc7};
         return mpu_write_mem(CFG_MOTION_BIAS, 9, regs);
     }
@@ -1154,7 +1183,8 @@ int dmp_enable_gyro_cal(unsigned char enable)
 int dmp_enable_lp_quat(unsigned char enable)
 {
     unsigned char regs[4];
-    if (enable) {
+    if (enable)
+    {
         regs[0] = DINBC0;
         regs[1] = DINBC2;
         regs[2] = DINBC4;
@@ -1178,12 +1208,14 @@ int dmp_enable_lp_quat(unsigned char enable)
 int dmp_enable_6x_lp_quat(unsigned char enable)
 {
     unsigned char regs[4];
-    if (enable) {
+    if (enable)
+    {
         regs[0] = DINA20;
         regs[1] = DINA28;
         regs[2] = DINA30;
         regs[3] = DINA38;
-    } else
+    }
+    else
         memset(regs, 0xA3, 4);
 
     mpu_write_mem(CFG_8, 4, regs);
@@ -1203,7 +1235,8 @@ static int decode_gesture(unsigned char *gesture)
     android_orient = gesture[3] & 0xC0;
     tap = 0x3F & gesture[3];
 
-    if (gesture[1] & INT_SRC_TAP) {
+    if (gesture[1] & INT_SRC_TAP)
+    {
         unsigned char direction, count;
         direction = tap >> 3;
         count = (tap % 8) + 1;
@@ -1211,7 +1244,8 @@ static int decode_gesture(unsigned char *gesture)
             dmp.tap_cb(direction, count);
     }
 
-    if (gesture[1] & INT_SRC_ANDROID_ORIENT) {
+    if (gesture[1] & INT_SRC_ANDROID_ORIENT)
+    {
         if (dmp.android_orient_cb)
             dmp.android_orient_cb(android_orient >> 6);
     }
@@ -1231,17 +1265,18 @@ static int decode_gesture(unsigned char *gesture)
 int dmp_set_interrupt_mode(unsigned char mode)
 {
     const unsigned char regs_continuous[11] =
-        {0xd8, 0xb1, 0xb9, 0xf3, 0x8b, 0xa3, 0x91, 0xb6, 0x09, 0xb4, 0xd9};
+    {0xd8, 0xb1, 0xb9, 0xf3, 0x8b, 0xa3, 0x91, 0xb6, 0x09, 0xb4, 0xd9};
     const unsigned char regs_gesture[11] =
-        {0xda, 0xb1, 0xb9, 0xf3, 0x8b, 0xa3, 0x91, 0xb6, 0xda, 0xb4, 0xda};
+    {0xda, 0xb1, 0xb9, 0xf3, 0x8b, 0xa3, 0x91, 0xb6, 0xda, 0xb4, 0xda};
 
-    switch (mode) {
+    switch (mode)
+    {
     case DMP_INT_CONTINUOUS:
         return mpu_write_mem(CFG_FIFO_ON_EVENT, 11,
-            (unsigned char*)regs_continuous);
+                             (unsigned char *)regs_continuous);
     case DMP_INT_GESTURE:
         return mpu_write_mem(CFG_FIFO_ON_EVENT, 11,
-            (unsigned char*)regs_gesture);
+                             (unsigned char *)regs_gesture);
     default:
         return -1;
     }
@@ -1268,7 +1303,7 @@ int dmp_set_interrupt_mode(unsigned char mode)
  *  @return     0 if successful.
  */
 int dmp_read_fifo(short *gyro, short *accel, long *quat,
-    unsigned long *timestamp, short *sensors, unsigned char *more)
+                  unsigned long *timestamp, short *sensors, unsigned char *more)
 {
     unsigned char fifo_data[MAX_PACKET_LENGTH];
     unsigned char ii = 0;
@@ -1283,18 +1318,19 @@ int dmp_read_fifo(short *gyro, short *accel, long *quat,
         return -1;
 
     /* Parse DMP packet. */
-    if (dmp.feature_mask & (DMP_FEATURE_LP_QUAT | DMP_FEATURE_6X_LP_QUAT)) {
+    if (dmp.feature_mask & (DMP_FEATURE_LP_QUAT | DMP_FEATURE_6X_LP_QUAT))
+    {
 #ifdef FIFO_CORRUPTION_CHECK
         long quat_q14[4], quat_mag_sq;
 #endif
         quat[0] = ((long)fifo_data[0] << 24) | ((long)fifo_data[1] << 16) |
-            ((long)fifo_data[2] << 8) | fifo_data[3];
+                  ((long)fifo_data[2] << 8) | fifo_data[3];
         quat[1] = ((long)fifo_data[4] << 24) | ((long)fifo_data[5] << 16) |
-            ((long)fifo_data[6] << 8) | fifo_data[7];
+                  ((long)fifo_data[6] << 8) | fifo_data[7];
         quat[2] = ((long)fifo_data[8] << 24) | ((long)fifo_data[9] << 16) |
-            ((long)fifo_data[10] << 8) | fifo_data[11];
+                  ((long)fifo_data[10] << 8) | fifo_data[11];
         quat[3] = ((long)fifo_data[12] << 24) | ((long)fifo_data[13] << 16) |
-            ((long)fifo_data[14] << 8) | fifo_data[15];
+                  ((long)fifo_data[14] << 8) | fifo_data[15];
         ii += 16;
 #ifdef FIFO_CORRUPTION_CHECK
         /* We can detect a corrupted FIFO by monitoring the quaternion data and
@@ -1310,9 +1346,10 @@ int dmp_read_fifo(short *gyro, short *accel, long *quat,
         quat_q14[2] = quat[2] >> 16;
         quat_q14[3] = quat[3] >> 16;
         quat_mag_sq = quat_q14[0] * quat_q14[0] + quat_q14[1] * quat_q14[1] +
-            quat_q14[2] * quat_q14[2] + quat_q14[3] * quat_q14[3];
+                      quat_q14[2] * quat_q14[2] + quat_q14[3] * quat_q14[3];
         if ((quat_mag_sq < QUAT_MAG_SQ_MIN) ||
-            (quat_mag_sq > QUAT_MAG_SQ_MAX)) {
+                (quat_mag_sq > QUAT_MAG_SQ_MAX))
+        {
             /* Quaternion is outside of the acceptable threshold. */
             mpu_reset_fifo();
             sensors[0] = 0;
@@ -1322,18 +1359,20 @@ int dmp_read_fifo(short *gyro, short *accel, long *quat,
 #endif
     }
 
-    if (dmp.feature_mask & DMP_FEATURE_SEND_RAW_ACCEL) {
-        accel[0] = ((short)fifo_data[ii+0] << 8) | fifo_data[ii+1];
-        accel[1] = ((short)fifo_data[ii+2] << 8) | fifo_data[ii+3];
-        accel[2] = ((short)fifo_data[ii+4] << 8) | fifo_data[ii+5];
+    if (dmp.feature_mask & DMP_FEATURE_SEND_RAW_ACCEL)
+    {
+        accel[0] = ((short)fifo_data[ii + 0] << 8) | fifo_data[ii + 1];
+        accel[1] = ((short)fifo_data[ii + 2] << 8) | fifo_data[ii + 3];
+        accel[2] = ((short)fifo_data[ii + 4] << 8) | fifo_data[ii + 5];
         ii += 6;
         sensors[0] |= INV_XYZ_ACCEL;
     }
 
-    if (dmp.feature_mask & DMP_FEATURE_SEND_ANY_GYRO) {
-        gyro[0] = ((short)fifo_data[ii+0] << 8) | fifo_data[ii+1];
-        gyro[1] = ((short)fifo_data[ii+2] << 8) | fifo_data[ii+3];
-        gyro[2] = ((short)fifo_data[ii+4] << 8) | fifo_data[ii+5];
+    if (dmp.feature_mask & DMP_FEATURE_SEND_ANY_GYRO)
+    {
+        gyro[0] = ((short)fifo_data[ii + 0] << 8) | fifo_data[ii + 1];
+        gyro[1] = ((short)fifo_data[ii + 2] << 8) | fifo_data[ii + 3];
+        gyro[2] = ((short)fifo_data[ii + 4] << 8) | fifo_data[ii + 5];
         ii += 6;
         sensors[0] |= INV_XYZ_GYRO;
     }

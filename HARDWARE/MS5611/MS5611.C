@@ -204,7 +204,7 @@ void MS561101BA_getPressure(void)
 float MS561101BA_get_altitude(float scaling)
 {
     MS5611_Altitude = 15384.62f * temp_jisuan * (1.0f - expf(0.190259f * logf(scaling)));
-	return MS5611_Altitude;
+    return MS5611_Altitude;
 }
 
 extern float Altitude_dt;
@@ -287,7 +287,7 @@ extern float acc_Climb_out;
 //acc_Climb_out in cm/s2
 void Derivative_Filter(void)
 {
-	acc_Climb_out=(10.0f*(f(1)-f(-1))/(x(1)-x(-1))+16.0f*(f(2)-f(-2))/(x(2)-x(-2))+6.0f*(f(3)-f(-3))/(x(3)-x(-3)))*0.03125f;
+    acc_Climb_out = (10.0f * (f(1) - f(-1)) / (x(1) - x(-1)) + 16.0f * (f(2) - f(-2)) / (x(2) - x(-2)) + 6.0f * (f(3) - f(-3)) / (x(3) - x(-3))) * 0.03125f;
 }
 
 

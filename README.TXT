@@ -1,16 +1,15 @@
 1.Target:	
 	
-2.realizing:
+2.realizing:	1.fix a dangerous bug in update throttle by adding jiesuokeyui to the condition constraint
+		2.fix a bug in Altitude hold 
 
 3.problem:	
 
 4.reason:	
 
 5.todo:		1.altitude hold
-		2.find a good way to guess Z velocity
 		
-6.phenomenon:	1.nothing changed.video:20170407_143230.mp4
-		2.
+6.phenomenon:	1.all in place except Altitude hold offsets,all right,video:20170408_150549.mp4
 
 7.solutions: 
 

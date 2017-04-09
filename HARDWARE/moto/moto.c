@@ -55,17 +55,17 @@ float kp_alpha_x = 0.03, kp_alpha_y = 0.03, kp_alpha_z = 0;
 //velocity and accelerate in centimeter
 //velocity between 0~50,10Hz,5
 //accelerate between 0~100,10Hz,10
-float KP_VEL_Z = 0.5;
-float kp_vel_z = 0.5;
-float KP_ACC_Z = 0.5 * 0.05978;
-float kp_acc_z = 0.5 * 0.05978;
+float KP_VEL_Z = 0.3;
+float kp_vel_z = 0.3;
+//float KP_ACC_Z = 0 * 0.05978;
+//float kp_acc_z = 0 * 0.05978;
 //PD controller bottom
 
 extern float roll_err, pitch_err, yaw_err;
 extern float desroll, despitch, desyaw;
 
 extern short gyrox_out, gyroy_out, gyroz_out;
-extern short aacx, aacy, aacz;     
+extern short aacx, aacy, aacz;
 extern short accz_out;
 
 extern float Ahd;
@@ -142,10 +142,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
 
-    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15)+ Constrain((int16_t)Ahd, 5, -5) ; //              CW3     1CCW	   / \				 
-    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15)+ Constrain((int16_t)Ahd, 5, -5) ; //  ∏© ”Õº          * *           / | \ X÷·      	  Y÷·
-    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15)+ Constrain((int16_t)Ahd, 5, -5) ; //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15)+ Constrain((int16_t)Ahd, 5, -5) ; //      	    CCW2    4CW         |
+    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 15, -15) ; //              CW3     1CCW	   / \				 
+    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 15, -15) ; //  ∏© ”Õº          * *           / | \ X÷·      	  Y÷·
+    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 15, -15) ; //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_alpha, 30, -30) + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 15, -15) ; //      	    CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }
@@ -169,10 +169,10 @@ void cyberNation_omega(void)
 
 void cyberNation_alpha(void)
 {
-    cNd1_alpha = +(-cNd1_omega+cNd2_omega+cNd3_omega-cNd4_omega-cNd1_theta+cNd2_theta+cNd3_theta-cNd4_theta) * kp_alpha_x + (-cNd1_omega+cNd2_omega-cNd3_omega+cNd4_omega-cNd1_theta+cNd2_theta-cNd3_theta+cNd4_theta) * kp_alpha_y;
-    cNd2_alpha = -(-cNd1_omega+cNd2_omega+cNd3_omega-cNd4_omega-cNd1_theta+cNd2_theta+cNd3_theta-cNd4_theta) * kp_alpha_x - (-cNd1_omega+cNd2_omega-cNd3_omega+cNd4_omega-cNd1_theta+cNd2_theta-cNd3_theta+cNd4_theta) * kp_alpha_y;
-    cNd3_alpha = -(-cNd1_omega+cNd2_omega+cNd3_omega-cNd4_omega-cNd1_theta+cNd2_theta+cNd3_theta-cNd4_theta) * kp_alpha_x + (-cNd1_omega+cNd2_omega-cNd3_omega+cNd4_omega-cNd1_theta+cNd2_theta-cNd3_theta+cNd4_theta) * kp_alpha_y;
-    cNd4_alpha = +(-cNd1_omega+cNd2_omega+cNd3_omega-cNd4_omega-cNd1_theta+cNd2_theta+cNd3_theta-cNd4_theta) * kp_alpha_x - (-cNd1_omega+cNd2_omega-cNd3_omega+cNd4_omega-cNd1_theta+cNd2_theta-cNd3_theta+cNd4_theta) * kp_alpha_y;
+    cNd1_alpha = +(-cNd1_omega + cNd2_omega + cNd3_omega - cNd4_omega - cNd1_theta + cNd2_theta + cNd3_theta - cNd4_theta) * kp_alpha_x + (-cNd1_omega + cNd2_omega - cNd3_omega + cNd4_omega - cNd1_theta + cNd2_theta - cNd3_theta + cNd4_theta) * kp_alpha_y;
+    cNd2_alpha = -(-cNd1_omega + cNd2_omega + cNd3_omega - cNd4_omega - cNd1_theta + cNd2_theta + cNd3_theta - cNd4_theta) * kp_alpha_x - (-cNd1_omega + cNd2_omega - cNd3_omega + cNd4_omega - cNd1_theta + cNd2_theta - cNd3_theta + cNd4_theta) * kp_alpha_y;
+    cNd3_alpha = -(-cNd1_omega + cNd2_omega + cNd3_omega - cNd4_omega - cNd1_theta + cNd2_theta + cNd3_theta - cNd4_theta) * kp_alpha_x + (-cNd1_omega + cNd2_omega - cNd3_omega + cNd4_omega - cNd1_theta + cNd2_theta - cNd3_theta + cNd4_theta) * kp_alpha_y;
+    cNd4_alpha = +(-cNd1_omega + cNd2_omega + cNd3_omega - cNd4_omega - cNd1_theta + cNd2_theta + cNd3_theta - cNd4_theta) * kp_alpha_x - (-cNd1_omega + cNd2_omega - cNd3_omega + cNd4_omega - cNd1_theta + cNd2_theta - cNd3_theta + cNd4_theta) * kp_alpha_y;
 }
 
 #define Filter_Num 6//sliding window with 6 values
@@ -214,7 +214,7 @@ void Accz_filter(void)
     float Filter_sum_accz = 0;
     uint8_t i;
 
-    Filter_accz[Filter_count2] = aacz-aacz_chushi;
+    Filter_accz[Filter_count2] = aacz - aacz_chushi;
 
     for(i = 0; i < Filter_Num2; i++)
     {
@@ -236,7 +236,7 @@ void Altitude_filter(void)
 {
     static float Filter_Altitude[Filter_Num3];//if use integer,we will lose the value
     static uint8_t Filter_count3;
-    float Filter_sum_Altitude=0;
+    float Filter_sum_Altitude = 0;
     uint8_t i;
 
     Filter_Altitude[Filter_count3] = MS5611_Altitude;
@@ -292,7 +292,7 @@ void Kalman_filter_accz(void)
 
     //predict update
     accz_K = accz_P / (accz_P + accz_R);
-    accz_X_hat = accz_X_hat_minus + accz_K * (aacz- accz_X_hat_minus);
+    accz_X_hat = accz_X_hat_minus + accz_K * (aacz - accz_X_hat_minus);
     accz_P = (1 - accz_K) * accz_P;
 }
 
@@ -337,16 +337,19 @@ void Kalman_filter_accx(void)
 }
 
 
-extern float acc_Climb_out;
+extern float acc_Climb_rate;
 extern short aacz_chushi;
 
 void Altitude_hold_update(void)
 {
-    if(desroll<0.5&&despitch<0.5)
+    if(desroll < 0.5 && despitch < 0.5)
     {
-        Ahd = -kp_vel_z * acc_Climb_out - kp_acc_z *accz_out;
+        Ahd = -kp_vel_z * acc_Climb_rate; //- kp_acc_z * (accz_X_hat_minus - aacz_chushi);
     }
-    Ahd = 0; 
+    else
+    {
+        Ahd = 0;
+    }
 }
 
 //degree to radian by multiplier 0.0174533
