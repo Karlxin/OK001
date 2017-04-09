@@ -229,26 +229,26 @@ void Kalman_filter_alt(void)//Altitude Kalman filter
 }
 
 
-extern float Climb_R;
-extern float Climb_Q;
-extern float Climb_K;//kalman gain
-extern float Climb_X_hat;//init predict
-extern float Climb_X_hat_minus;//previous predict
-extern float Climb_P;//error variance
+extern float baro_climb_R;
+extern float baro_climb_Q;
+extern float baro_climb_K;//kalman gain
+extern float baro_climb_X_hat;//init predict
+extern float baro_climb_X_hat_minus;//previous predict
+extern float baro_climb_P;//error variance
 
 extern float Altitude_minus;
 extern float baro_climb_rate;
 
-void Kalman_filter_climb(void)
+void Kalman_filter_baro_climb(void)
 {
     //time update
-    Climb_X_hat_minus = Climb_X_hat;
-    Climb_P = Climb_P + Climb_Q;
+    baro_climb_X_hat_minus = baro_climb_X_hat;
+    baro_climb_P = baro_climb_P + baro_climb_Q;
 
     //predict update
-    Climb_K = Climb_P / (Climb_P + Climb_R);
-    Climb_X_hat = Climb_X_hat_minus + Climb_K * (baro_climb_rate - Climb_X_hat_minus);
-    Climb_P = (1 - Climb_K) * Climb_P;
+    baro_climb_K = baro_climb_P / (baro_climb_P + baro_climb_R);
+    baro_climb_X_hat = baro_climb_X_hat_minus + baro_climb_K * (baro_climb_rate - baro_climb_X_hat_minus);
+    baro_climb_P = (1 - baro_climb_K) * baro_climb_P;
 }
 
 

@@ -142,10 +142,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
 
-    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300)  + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 15, -15) ; //              CW3     1CCW	     / \				 
-    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300)  + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 15, -15) ; //  planform        * *           / | \ X÷·      	     Y÷·
-    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300)  + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 15, -15) ; //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300)  + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 15, -15) ; //      	      CCW2    4CW         |
+    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_theta, 50, -50) + Constrain(cNd1_omega, 300, -300)  + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //              CW3     1CCW	     / \				 
+    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_theta, 50, -50) + Constrain(cNd2_omega, 300, -300)  + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //  planform        * *           / | \ X÷·      	     Y÷·
+    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_theta, 50, -50) + Constrain(cNd3_omega, 300, -300)  + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_theta, 50, -50) + Constrain(cNd4_omega, 300, -300)  + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //      	      CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }

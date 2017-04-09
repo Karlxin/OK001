@@ -79,6 +79,7 @@ u32 wubaimiaozhong = 0;
 u32 yiqianmiaozhong = 0;
 
 u32 channel1_in, channel2_in, channel3_in, channel4_in;//between 1000~2000
+u32 STOPPING_THROTTLE=1400;
 
 float roll, pitch, yaw;//Tait-Bryan angles ¦Õ¦È¦×,DMP hardware resolving ,roll,pitch,yaw
 short aacx, aacy, aacz;//accelerometer raw data
@@ -175,7 +176,7 @@ float temp_jisuan;
 float temp_Altitude = 0;
 float Altitude_chushi;
 
-//---Alt karlman top
+//---baro Alt karlman top
 extern void Kalman_filter_alt(void);
 float Altitude_minus = 0;//last barometer altitude converted by pressure
 float Altitude_dt = 0.1;//the delta time
@@ -186,17 +187,17 @@ float Altitude_K = 0; //kalman gain
 float Altitude_X_hat = 0; //init predict
 float Altitude_X_hat_minus = 0; //previous predict
 float Altitude_P = 0; //error variance
-//---Alt karlman bottom
+//---baro Alt karlman bottom
 
-//---Climb Karlman top
-extern void Kalman_filter_climb(void);
-float Climb_R = 7;
-float Climb_Q = 0.01; //process Variance,3/10=0.3
-float Climb_K = 0; //kalman gain
-float Climb_X_hat = 0; //init predict for Climb rate
-float Climb_X_hat_minus = 0; //previous predict for Climb rate
-float Climb_P = 0; //error variance
-//---Climb karlman bottom
+//---baro Climb Karlman top
+extern void Kalman_filter_baro_climb(void);
+float baro_climb_R = 7;
+float baro_climb_Q = 0.01; //process Variance,3/10=0.3
+float baro_climb_K = 0; //kalman gain
+float baro_climb_X_hat = 0; //init predict for Climb rate
+float baro_climb_X_hat_minus = 0; //previous predict for Climb rate
+float baro_climb_P = 0; //error variance
+//---baro Climb karlman bottom
 
 //---Kalman_filter_accz top
 extern void Kalman_filter_accz(void);//in 32767
@@ -314,7 +315,7 @@ int main(void)
     u8 flymode = 0;
     int16_t temp1, temp2,  desthrottle, temp4; //to convert channel pulse width modulation wave to expectation angle
     u8 i;//for for loop
-    u8 USART1_Open = 0;//Open Serial by 500000 baud rate by setting it.
+    u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
     u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
     u32 climb_rate_time = 0;
@@ -615,12 +616,12 @@ int main(void)
             debug[4]++;
             if(channel3_in > 1100 && jiesuokeyi)
             {
-                //Altitude_hold_update();//this frequency may be enough.altitude holding superposition
+                Altitude_hold_update();//this frequency may be enough.altitude holding superposition
             }
         }
         //twenty ms bottom
 
-        /*
+        
         //fifty ms top
         if(xitongshijian * 0.002f > wushihaomiao + 1)
         {
@@ -630,10 +631,10 @@ int main(void)
             //serial top
             if(USART1_Open)
             {
-                ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude * 100, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
+                ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
                 ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
-                ANO_DT_Send_Senser((s16)aacx , (s16)aacy, (s16)(accz_X_hat_minus - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)Altitude_X_hat_minus * 100, (s16)acc_climb_rate, (s16)baro_climb_rate, (s32)MS5611_Altitude * 100);
+                ANO_DT_Send_Senser((s16)aacx , (s16)aacy, (s16)(accz_X_hat_minus - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_X_hat_minus, (s16)acc_climb_rate, (s16)baro_climb_rate, (s32)MS5611_Altitude);
 
             }
             else if(USART2_Open)
@@ -643,7 +644,7 @@ int main(void)
             //serial bottom
         }
         //fifty ms bottom
-        */
+        
 
         //hundred ms top
         if(xitongshijian * 0.001f > yibaihaomiao + 1)
@@ -674,7 +675,7 @@ int main(void)
                 if(Altitude_samples_full)
                 {
                     Derivative_Filter();
-                    Kalman_filter_climb();
+                    Kalman_filter_baro_climb();
                 }
             }
         }
@@ -689,7 +690,7 @@ int main(void)
             {
                 climb_rate_time++;
                 acc_climb_err = _fabsf(acc_climb_rate - baro_climb_rate);
-                if(acc_climb_err > 10 * complementary_count) //in a second,we get above expectation error,it should have some action,so we keep believing in accelerometer
+                if(acc_climb_err > 15 * complementary_count) //in a second,we get above expectation error,it should have some action,so we keep believing in accelerometer
                 {
                     complementary_count++;
                 }

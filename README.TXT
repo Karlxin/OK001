@@ -1,7 +1,6 @@
 1.Target:	
 	
-2.realizing:	1.fix a dangerous bug in update throttle by adding jiesuokeyui to the condition constraint
-		2.fix a bug in Altitude hold 
+2.realizing:	
 
 3.problem:	
 
@@ -9,8 +8,8 @@
 
 5.todo:		1.altitude hold
 		
-6.phenomenon:	1.all in place except Altitude hold offsets,all right,video:20170408_150549.mp4
-		2.about to altitude hold,before that,we take a try to see if it works well now.all right,nothing strange.Video:20170409_120218.mp4
+6.phenomenon:	1.we open the altitude hold,to see the noise.it does not meet the requirement video:20170409_123729.
+		2.change althold range to 10,it can hold,but it is not perfect,it could go down so how,we need refine it,video:20170409_132647.mp4
 
 7.solutions: 
 

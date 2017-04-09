@@ -114,7 +114,7 @@ extern void Derivative_Filter(void);
 extern float Altitude_samples[7];
 extern u8 Altitude_sample_index;
 extern float Altitude_samples_time_stamps[7];
-extern void Kalman_filter_climb(void);
+extern void Kalman_filter_baro_climb(void);
 extern u8 Altitude_samples_full;
 
 void TIM5_IRQHandler(void)   //TIM5中断,每过一毫秒就搞一次
