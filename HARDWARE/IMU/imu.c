@@ -144,15 +144,15 @@ void ag2q2rpy(float gx, float gy, float gz, float ax, float ay, float az, float 
 // END OF CODE
 //====================================================================================================
 
-extern float acc_Climb_rate_out;
+extern float acc_climb_rate_out;
 extern float Climb_X_hat_minus;
-extern float acc_Climb_err;
-extern float acc_Climb_out;
-extern float acc_Climb_rate;
+extern float acc_climb_err;
+extern float baro_climb_rate;
+extern float acc_climb_rate;
 
 void complementation_filter(void)
 {
-	acc_Climb_rate=acc_Climb_out; //offset the error
+	acc_climb_rate=baro_climb_rate; //offset the error
 }
 
 

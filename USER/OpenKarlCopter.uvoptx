@@ -253,11 +253,6 @@
           <WinNumber>1</WinNumber>
           <ItemText>debug[7],0x0A</ItemText>
         </Ww>
-        <Ww>
-          <count>17</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>acc_Climb_rate</ItemText>
-        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>

@@ -10,6 +10,7 @@
 5.todo:		1.altitude hold
 		
 6.phenomenon:	1.all in place except Altitude hold offsets,all right,video:20170408_150549.mp4
+		2.about to altitude hold,before that,we take a try to see if it works well now.all right,nothing strange.Video:20170409_120218.mp4
 
 7.solutions: 
 

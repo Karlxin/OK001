@@ -215,7 +215,7 @@ extern float Altitude_X_hat;//init predict
 extern float Altitude_X_hat_minus;//previous
 extern float Altitude_P;//error variance
 
-
+//MS5611_Altitude in m
 void Kalman_filter_alt(void)//Altitude Kalman filter
 {
     //time update
@@ -237,7 +237,7 @@ extern float Climb_X_hat_minus;//previous predict
 extern float Climb_P;//error variance
 
 extern float Altitude_minus;
-extern float acc_Climb_out;
+extern float baro_climb_rate;
 
 void Kalman_filter_climb(void)
 {
@@ -247,7 +247,7 @@ void Kalman_filter_climb(void)
 
     //predict update
     Climb_K = Climb_P / (Climb_P + Climb_R);
-    Climb_X_hat = Climb_X_hat_minus + Climb_K * (acc_Climb_out - Climb_X_hat_minus);
+    Climb_X_hat = Climb_X_hat_minus + Climb_K * (baro_climb_rate - Climb_X_hat_minus);
     Climb_P = (1 - Climb_K) * Climb_P;
 }
 
@@ -282,12 +282,12 @@ extern float Altitude_samples_time_stamps[7];
 #define f(i) Altitude_samples[(((i+1)+3*SAMPLES_RANGE/2)%SAMPLES_RANGE)]
 #define x(i) Altitude_samples_time_stamps[(((i+1)+3*SAMPLES_RANGE/2)%SAMPLES_RANGE)]
 
-extern float acc_Climb_out;
+extern float baro_climb_rate;
 
-//acc_Climb_out in cm/s2
+//baro_climb_rate in cm/s2
 void Derivative_Filter(void)
 {
-    acc_Climb_out = (10.0f * (f(1) - f(-1)) / (x(1) - x(-1)) + 16.0f * (f(2) - f(-2)) / (x(2) - x(-2)) + 6.0f * (f(3) - f(-3)) / (x(3) - x(-3))) * 0.03125f;
+    baro_climb_rate = (10.0f * (f(1) - f(-1)) / (x(1) - x(-1)) + 16.0f * (f(2) - f(-2)) / (x(2) - x(-2)) + 6.0f * (f(3) - f(-3)) / (x(3) - x(-3))) * 0.03125f;
 }
 
 

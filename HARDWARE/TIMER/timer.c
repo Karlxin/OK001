@@ -102,7 +102,7 @@ extern float scaling;
 extern float MS5611_Pressure;
 extern float Pressure_chushi;
 extern void Altitude_filter(void);
-extern float acc_Climb_out;
+extern float baro_climb_rate;
 extern float Altitude_out;
 extern float Altitude_minus;
 extern void Kalman_filter_alt(void);
