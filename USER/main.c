@@ -484,15 +484,16 @@ int main(void)
                             if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
                             {
                                 stopping_throttle_both_recorded = 1; //set all done flag
+								LED1 = 0; //Lightening green LED，showing range recorded.
                             }
                         }
                     }
                 }
                 else//both bound recorded
                 {
-                    accz_dt = (xitongshijian - accz_temp_time) * 0.0001;
-                    accz_temp_time = xitongshijian;
-                    acc_climb_rate += (__fabs((accz_X_hat_minus * cosf(pitch) * cosf(roll)) - aacz_chushi) < accz_integral_deadzone ? 0 : ((accz_X_hat_minus * cosf(pitch) * cosf(roll)) - aacz_chushi)) * 0.0596942 * accz_dt;
+                    //accz_dt = (xitongshijian - accz_temp_time) * 0.0001;
+                    //accz_temp_time = xitongshijian;
+                    //acc_climb_rate += (__fabs((accz_X_hat_minus * cosf(pitch) * cosf(roll)) - aacz_chushi) < accz_integral_deadzone ? 0 : ((accz_X_hat_minus * cosf(pitch) * cosf(roll)) - aacz_chushi)) * 0.0596942 * accz_dt;
                 }
             }
 
@@ -591,25 +592,25 @@ int main(void)
                     Moto_PwmRflash(0, 0, 0, 0);//core 1 called in place 1
                 }
 
-                if(channel3_in < 1100 && channel4_in < 1100)//油门小于1100，偏航小于1100,也就是油门最下，偏航最左
+                if(channel3_in < 1100 && channel4_in < 1100)//throttle<1100,yaw<1100,i.e. stick of throttle to the very left and down
                 {
-                    if(baochijiasuo == 0)//保持加锁为零
+                    if(baochijiasuo == 0)//counter for holding disarming =0
                     {
-                        baochijiasuo = miaozhong;//保持加锁等于系统开机以来的秒钟值
+                        baochijiasuo = miaozhong;//set counter for holding disarming to system seconds
                     }
-                    if((miaozhong - baochijiasuo) >= 8)//油门最小，偏航最左已经过去八秒了
+                    if((miaozhong - baochijiasuo) >= 8)//holding stick for disarming maintained over eight seconds
                     {
-                        jiesuokeyi = 0;//遥控不可以解锁
-                        LED1 = 0;//绿灯亮表示解锁不可以
-                        LED0 = 1;//红灯灭表示不能让电机动了
+                        jiesuokeyi = 0;//reset flag of disarming
+                        LED1 = 0;//lightening green led stand for disarming
+                        LED0 = 1;//darkening red led stand for disarming
                     }
                 }
                 else
                 {
-                    baochijiasuo = 0;//保持加锁计时器重新归零
+                    baochijiasuo = 0;//reset counter of holding disarming
                 }
             }
-            else//解锁不可以
+            else//status is disarming
             {
                 d1 = 0;
                 d2 = 0;
@@ -617,17 +618,17 @@ int main(void)
                 d4 = 0;
                 Moto_PwmRflash(0, 0, 0, 0);//disarm all the motor,over 0.02ms,core 1 called in 2 place
 
-                if(channel3_in < 1100 && channel4_in > 1900)//油门小于1100，偏航角大于1900,也就是油门最下，偏航最右
+                if(channel3_in < 1100 && channel4_in > 1900)//throttle<1100,yaw>1900,i.e.,the stick of throttle to the very right and bottom
                 {
-                    if(baochijiesuo == 0)//保持解锁计时器为零
+                    if(baochijiesuo == 0)//counter of arming=0 
                     {
-                        baochijiesuo = miaozhong;//保持解锁计时器赋予它系统开启的秒钟值
+                        baochijiesuo = miaozhong;//get the system time
                     }
-                    if((miaozhong - baochijiesuo) >= 5)//距离保持解锁状态已经过去五秒了
+                    if((miaozhong - baochijiesuo) >= 5)//holding arming over five seconds
                     {
-                        jiesuokeyi = 1;//解锁可以标志重新赋值为可以
-                        LED1 = 1; //绿灯灭表示解锁可
-                        LED0 = 0; //红灯亮表示要小心电机可以转了
+                        jiesuokeyi = 1;//set flag of arming 
+                        LED1 = 1; //green led dark stand for arming
+                        LED0 = 0; //red led light stand for arming.please be careful of rotating propeller
                     }
                 }
                 else//channel3_in>1100,channel4_in<1900,that is throttle stick above bottom,yaw stick is not on the right
@@ -716,6 +717,7 @@ int main(void)
                 {
                     Derivative_Filter();
                     Kalman_filter_baro_climb();
+					/*
                     if(stopping_throttle_upper_bound < channel3_in || channel3_in < stopping_throttle_lower_bound )
                     {
                         complementary_count++;
@@ -725,6 +727,7 @@ int main(void)
                         complementation_filter();
                         complementary_count = 1;
                     }
+					*/
                 }
             }
         }

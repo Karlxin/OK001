@@ -23,7 +23,7 @@
 		5.
 		5.1remove the complementation inside the 1 herz loop.
 		5.2move the complementation to baro loop.
-		5.3use baro climb rate for record the hover throttle up bound.
+		5.3use baro climb rate for record the hover throttle up bound.Nothing happen.video:20170410_194419.mp4
 7.solutions: 
 
 8.exception:

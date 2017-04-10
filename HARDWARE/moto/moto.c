@@ -342,13 +342,14 @@ extern short aacz_chushi;
 extern u8 stopping_throttle_both_recorded;
 extern u32 stopping_throttle_upper_bound;
 extern u32 stopping_throttle_lower_bound;
-
+extern float baro_climb_rate;
 
 void Altitude_hold_update(void)
 {
 	if(stopping_throttle_both_recorded&&_fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1&&stopping_throttle_lower_bound<channel3_in&&channel3_in<stopping_throttle_upper_bound)
 	{
-		Ahd = -kp_vel_z * acc_climb_rate- kp_acc_z * (accz_X_hat_minus - aacz_chushi);
+		//Ahd = -kp_vel_z * baro_climb_rate;//- kp_acc_z * (accz_X_hat_minus - aacz_chushi);
+		Ahd=0;//we do not use it temporarily
 	}
     else
     {
