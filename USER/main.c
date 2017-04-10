@@ -307,11 +307,14 @@ u32 complementary_count = 1;
 
 u32 stopping_throttle_upper_bound = 1600;//the hover upper bound throttle
 u32 stopping_throttle_lower_bound = 1400;
+u32 stopping_throttle_temp;
 short acc_trigger = 300; //the trigger to record channel3_in i.e. throttle in
 u8 stopping_throttle_upper_recorded = 0;//flag for recording done
 u8 stopping_throttle_lower_recorded = 0;
 u8 stopping_throttle_both_recorded = 0;
+u32 hover_range = 50;
 
+short accz_integral_deadzone = 3; //to create a deadzone and deal with steady noise
 
 //main top
 int main(void)
@@ -455,38 +458,41 @@ int main(void)
             {
                 Accz_filter();//sliding window filter
                 Kalman_filter_accz();
-                accz_dt = (xitongshijian - accz_temp_time) * 0.0001;
-                accz_temp_time = xitongshijian;
 
                 if(!stopping_throttle_both_recorded)
                 {
-                    if(_fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1)
+                    if(jiesuokeyi)
                     {
-                        if(!stopping_throttle_upper_recorded)
+                        if(_fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1)
                         {
-                            if(accz_X_hat_minus - aacz_chushi > acc_trigger) //18cm/s2,we should consider the noise,but ignore it temporarily
+                            if(!stopping_throttle_upper_recorded)
                             {
-                                stopping_throttle_upper_bound = channel3_in; //record the upper throttle
-                                stopping_throttle_upper_recorded = 1; //set flag
+                                if(8<baro_climb_rate)
+                                {
+                                    stopping_throttle_upper_bound = channel3_in + 3; //record the upper throttle
+                                    stopping_throttle_upper_recorded = 1; //set flag
+                                }
                             }
-                        }
-                        if(!stopping_throttle_lower_recorded)
-                        {
-                            if(accz_X_hat_minus - aacz_chushi < -acc_trigger)
+                            if(!stopping_throttle_lower_recorded)
                             {
-                                stopping_throttle_lower_bound = channel3_in; //record the upper throttle
-                                stopping_throttle_lower_recorded = 1; //set flag
+                                if(stopping_throttle_upper_recorded)
+                                {
+                                    stopping_throttle_lower_bound = stopping_throttle_upper_bound - hover_range; //record the upper throttle
+                                    stopping_throttle_lower_recorded = 1; //set flag
+                                }
                             }
-                        }
-                        if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
-                        {
-                            stopping_throttle_both_recorded = 1; //set all done flag
+                            if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
+                            {
+                                stopping_throttle_both_recorded = 1; //set all done flag
+                            }
                         }
                     }
                 }
                 else//both bound recorded
                 {
-                        acc_climb_rate += (accz_X_hat_minus*cosf(pitch)*cosf(roll) - aacz_chushi) * 0.0596942 * accz_dt;
+                    accz_dt = (xitongshijian - accz_temp_time) * 0.0001;
+                    accz_temp_time = xitongshijian;
+                    acc_climb_rate += (__fabs((accz_X_hat_minus * cosf(pitch) * cosf(roll)) - aacz_chushi) < accz_integral_deadzone ? 0 : ((accz_X_hat_minus * cosf(pitch) * cosf(roll)) - aacz_chushi)) * 0.0596942 * accz_dt;
                 }
             }
 
@@ -666,9 +672,9 @@ int main(void)
             if(USART1_Open)
             {
                 ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
-                ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_bound, (u16) stopping_throttle_lower_bound, (u16) 0, (u16) 0); //over 0.5ms
+                ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_recorded, (u16) stopping_throttle_lower_recorded, (u16) stopping_throttle_both_recorded, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) stopping_throttle_upper_bound, (u16) stopping_throttle_lower_bound, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
-                ANO_DT_Send_Senser((s16)aacx , (s16)aacy, (s16)(accz_X_hat_minus - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_X_hat_minus, (s16)acc_climb_rate, (s16)baro_climb_rate, (s32)MS5611_Altitude);
+                ANO_DT_Send_Senser((s16)aacx , (s16)aacy, (s16)(accz_X_hat_minus * cosf(pitch)*cosf(roll) - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_X_hat_minus, (s16)acc_climb_rate, (s16)baro_climb_rate, (s32)MS5611_Altitude);
 
             }
             else if(USART2_Open)
@@ -710,6 +716,15 @@ int main(void)
                 {
                     Derivative_Filter();
                     Kalman_filter_baro_climb();
+                    if(stopping_throttle_upper_bound < channel3_in || channel3_in < stopping_throttle_lower_bound )
+                    {
+                        complementary_count++;
+                    }
+                    else
+                    {
+                        complementation_filter();
+                        complementary_count = 1;
+                    }
                 }
             }
         }
@@ -720,20 +735,6 @@ int main(void)
         {
             miaozhong = xitongshijian * 0.0001f; //visit by seconds resolution
             debug[7]++;
-            if(miaozhong / 3 > climb_rate_time + 1)//for climb rate,we get 6 centimeter per sencond error by accelerometer bias.
-            {
-                climb_rate_time++;
-                acc_climb_abs_err = _fabsf(acc_climb_rate - baro_climb_X_hat_minus);//get absolute error
-                if(acc_climb_abs_err > 30 * complementary_count) //in three seconds,we get above expectation error,it should have some rapid action,so we keep believing in accelerometer
-                {
-                    complementary_count++;
-                }
-                else
-                {
-                    complementation_filter();
-                    complementary_count = 1;
-                }
-            }
         }
         //seconds bottom
 

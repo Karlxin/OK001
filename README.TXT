@@ -2,7 +2,7 @@
 	
 2.realizing:	
 
-3.problem:	
+3.problem:	1.accelerometer is not good for calculate climb rate
 
 4.reason:	
 
@@ -20,6 +20,10 @@
 		4.6remove the integral condition constraints for climb rate
 		4.7adding body frame accz to earth frame accz for integral climb rate
 		4.8we use kalman filter for baro climb rate
+		5.
+		5.1remove the complementation inside the 1 herz loop.
+		5.2move the complementation to baro loop.
+		5.3use baro climb rate for record the hover throttle up bound.
 7.solutions: 
 
 8.exception:
