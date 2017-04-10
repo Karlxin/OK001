@@ -146,7 +146,6 @@ void ag2q2rpy(float gx, float gy, float gz, float ax, float ay, float az, float 
 
 extern float acc_climb_rate_out;
 extern float baro_climb_X_hat_minus;
-extern float acc_climb_err;
 extern float baro_climb_rate;
 extern float acc_climb_rate;
 

@@ -79,7 +79,7 @@ u32 wubaimiaozhong = 0;
 u32 yiqianmiaozhong = 0;
 
 u32 channel1_in, channel2_in, channel3_in, channel4_in;//between 1000~2000
-u32 STOPPING_THROTTLE=1400;
+u32 STOPPING_THROTTLE = 1400;
 
 float roll, pitch, yaw;//Tait-Bryan angles ¦Õ¦È¦×,DMP hardware resolving ,roll,pitch,yaw
 short aacx, aacy, aacz;//accelerometer raw data
@@ -191,7 +191,7 @@ float Altitude_P = 0; //error variance
 
 //---baro Climb Karlman top
 extern void Kalman_filter_baro_climb(void);
-float baro_climb_R = 7;
+float baro_climb_R = 3;
 float baro_climb_Q = 0.01; //process Variance,3/10=0.3
 float baro_climb_K = 0; //kalman gain
 float baro_climb_X_hat = 0; //init predict for Climb rate
@@ -211,7 +211,7 @@ float accz_X_hat_minus = 0; //previous predict for accz
 float accz_P = 140; //error variance
 
 float acc_climb_rate = 0; //the climb rate
-float acc_climb_err = 0;
+float acc_climb_abs_err = 0;
 float baro_climb_rate = 0;
 float acc_climb_rate_out = 0;
 //---Kalman_filter_accz bottom
@@ -304,6 +304,14 @@ u8 Altitude_samples_full = 0;
 extern void Derivative_Filter(void);
 
 u32 complementary_count = 1;
+
+u32 stopping_throttle_upper_bound = 1600;//the hover upper bound throttle
+u32 stopping_throttle_lower_bound = 1400;
+short acc_trigger = 300; //the trigger to record channel3_in i.e. throttle in
+u8 stopping_throttle_upper_recorded = 0;//flag for recording done
+u8 stopping_throttle_lower_recorded = 0;
+u8 stopping_throttle_both_recorded = 0;
+
 
 //main top
 int main(void)
@@ -450,9 +458,35 @@ int main(void)
                 accz_dt = (xitongshijian - accz_temp_time) * 0.0001;
                 accz_temp_time = xitongshijian;
 
-                if(_fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 3 && _fabsf(roll) < 3)
+                if(!stopping_throttle_both_recorded)
                 {
-                    acc_climb_rate += (accz_X_hat_minus - aacz_chushi) * 0.0596942 * accz_dt;
+                    if(_fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1)
+                    {
+                        if(!stopping_throttle_upper_recorded)
+                        {
+                            if(accz_X_hat_minus - aacz_chushi > acc_trigger) //18cm/s2,we should consider the noise,but ignore it temporarily
+                            {
+                                stopping_throttle_upper_bound = channel3_in; //record the upper throttle
+                                stopping_throttle_upper_recorded = 1; //set flag
+                            }
+                        }
+                        if(!stopping_throttle_lower_recorded)
+                        {
+                            if(accz_X_hat_minus - aacz_chushi < -acc_trigger)
+                            {
+                                stopping_throttle_lower_bound = channel3_in; //record the upper throttle
+                                stopping_throttle_lower_recorded = 1; //set flag
+                            }
+                        }
+                        if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
+                        {
+                            stopping_throttle_both_recorded = 1; //set all done flag
+                        }
+                    }
+                }
+                else//both bound recorded
+                {
+                        acc_climb_rate += (accz_X_hat_minus*cosf(pitch)*cosf(roll) - aacz_chushi) * 0.0596942 * accz_dt;
                 }
             }
 
@@ -621,7 +655,7 @@ int main(void)
         }
         //twenty ms bottom
 
-        
+
         //fifty ms top
         if(xitongshijian * 0.002f > wushihaomiao + 1)
         {
@@ -632,8 +666,8 @@ int main(void)
             if(USART1_Open)
             {
                 ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
-                ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //over 0.5ms
-                ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
+                ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_bound, (u16) stopping_throttle_lower_bound, (u16) 0, (u16) 0); //over 0.5ms
+                ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) stopping_throttle_upper_bound, (u16) stopping_throttle_lower_bound, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
                 ANO_DT_Send_Senser((s16)aacx , (s16)aacy, (s16)(accz_X_hat_minus - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_X_hat_minus, (s16)acc_climb_rate, (s16)baro_climb_rate, (s32)MS5611_Altitude);
 
             }
@@ -644,7 +678,7 @@ int main(void)
             //serial bottom
         }
         //fifty ms bottom
-        
+
 
         //hundred ms top
         if(xitongshijian * 0.001f > yibaihaomiao + 1)
@@ -686,11 +720,11 @@ int main(void)
         {
             miaozhong = xitongshijian * 0.0001f; //visit by seconds resolution
             debug[7]++;
-            if(miaozhong / 3 > climb_rate_time + 1)//for climb rate
+            if(miaozhong / 3 > climb_rate_time + 1)//for climb rate,we get 6 centimeter per sencond error by accelerometer bias.
             {
                 climb_rate_time++;
-                acc_climb_err = _fabsf(acc_climb_rate - baro_climb_rate);
-                if(acc_climb_err > 15 * complementary_count) //in a second,we get above expectation error,it should have some action,so we keep believing in accelerometer
+                acc_climb_abs_err = _fabsf(acc_climb_rate - baro_climb_X_hat_minus);//get absolute error
+                if(acc_climb_abs_err > 30 * complementary_count) //in three seconds,we get above expectation error,it should have some rapid action,so we keep believing in accelerometer
                 {
                     complementary_count++;
                 }
