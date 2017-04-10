@@ -348,8 +348,8 @@ void Altitude_hold_update(void)
 {
 	if(stopping_throttle_both_recorded&&_fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1&&stopping_throttle_lower_bound<channel3_in&&channel3_in<stopping_throttle_upper_bound)
 	{
-		//Ahd = -kp_vel_z * baro_climb_rate;//- kp_acc_z * (accz_X_hat_minus - aacz_chushi);
-		Ahd=0;//we do not use it temporarily
+		Ahd = -kp_vel_z * baro_climb_rate;//- kp_acc_z * (accz_X_hat_minus - aacz_chushi);
+		//Ahd=0;//we do not use it temporarily
 	}
     else
     {

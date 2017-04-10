@@ -308,7 +308,7 @@ u32 complementary_count = 1;
 u32 stopping_throttle_upper_bound = 1600;//the hover upper bound throttle
 u32 stopping_throttle_lower_bound = 1400;
 u32 stopping_throttle_temp;
-short acc_trigger = 300; //the trigger to record channel3_in i.e. throttle in
+float baro_trigger = 5; //the trigger to record channel3_in i.e. throttle in
 u8 stopping_throttle_upper_recorded = 0;//flag for recording done
 u8 stopping_throttle_lower_recorded = 0;
 u8 stopping_throttle_both_recorded = 0;
@@ -329,7 +329,6 @@ int main(void)
     u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
     u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
-    u32 climb_rate_time = 0;
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0£¬1£¬2£¬3£»subclass by 0,1(2:0),over 0.0004ms
@@ -463,11 +462,11 @@ int main(void)
                 {
                     if(jiesuokeyi)
                     {
-                        if(_fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1)
+                        if(_fabsf(desroll) < 1 && _fabsf(despitch) < 1)
                         {
                             if(!stopping_throttle_upper_recorded)
                             {
-                                if(8<baro_climb_rate)
+                                if(baro_trigger<baro_climb_rate)
                                 {
                                     stopping_throttle_upper_bound = channel3_in + 3; //record the upper throttle
                                     stopping_throttle_upper_recorded = 1; //set flag
