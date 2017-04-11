@@ -12,7 +12,11 @@
 		
 6.phenomenon:	1.remove kalman filter for baro altitude,it works worse.
 		2.it works.haha.but not perfect.video:20170411_112132.mp4
-		3.
+		3.hover test 1,video:20170411_113942.mp4
+		4.adding 0.06 for hover climb rate P.baro recording for hover throttle are affected by propeller.video:20170411_114952.mp4,20170411_115510.mp4
+		5.let the 1400 and 1600 to be coarse estimating,this time it does not record.video:20170411_121034.mp4
+		6.down the baro trigger to 6
+		
 
 7.solutions: 
 

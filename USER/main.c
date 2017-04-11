@@ -305,8 +305,10 @@ extern void Derivative_Filter(void);
 
 u32 complementary_count = 1;
 
-u32 stopping_throttle_upper_bound = 1600;//the hover upper bound throttle
-u32 stopping_throttle_lower_bound = 1400;
+u32 stopping_throttle_upper_bound_coarse = 1600;//the hover upper bound throttle
+u32 stopping_throttle_lower_bound_coarse = 1400;
+u32 stopping_throttle_upper_bound_fine=1600;
+u32 stopping_throttle_lower_bound_fine=1400;
 u32 stopping_throttle_temp;
 float baro_trigger = 8; //the trigger to record channel3_in i.e. throttle in
 u8 stopping_throttle_upper_recorded = 0;//flag for recording done
@@ -485,13 +487,13 @@ int main(void)
 
             if(!stopping_throttle_both_recorded)
             {
-                if(jiesuokeyi)
+                if(jiesuokeyi&&(stopping_throttle_lower_bound_coarse<channel3_in)&&(channel3_in<stopping_throttle_upper_bound_coarse))
                 {
                     if(!stopping_throttle_upper_recorded)
                     {
                         if(baro_trigger < baro_climb_rate)
                         {
-                            stopping_throttle_upper_bound = channel3_in + hover_range_top; //record the upper throttle
+                            stopping_throttle_upper_bound_fine = channel3_in + hover_range_top; //record the upper throttle
                             stopping_throttle_upper_recorded = 1; //set flag
                         }
                     }
@@ -499,7 +501,7 @@ int main(void)
                     {
                         if(stopping_throttle_upper_recorded)
                         {
-                            stopping_throttle_lower_bound = stopping_throttle_upper_bound -hover_range_top- hover_range_bottom; //record the upper throttle
+                            stopping_throttle_lower_bound_fine = stopping_throttle_upper_bound_fine -hover_range_top- hover_range_bottom; //record the upper throttle
                             stopping_throttle_lower_recorded = 1; //set flag
                         }
                     }
@@ -667,7 +669,7 @@ int main(void)
             {
                 ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
                 ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_recorded, (u16) stopping_throttle_lower_recorded, (u16) stopping_throttle_both_recorded, (u16) 0); //over 0.5ms
-                ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) stopping_throttle_upper_bound, (u16) stopping_throttle_lower_bound, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
+                ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) stopping_throttle_upper_bound_fine, (u16) stopping_throttle_lower_bound_fine, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
                 ANO_DT_Send_Senser((s16)aacx , (s16)aacy, (s16)(accz_X_hat_minus * cosf(pitch)*cosf(roll) - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_X_hat_minus, (s16)acc_climb_rate, (s16)baro_climb_rate, (s32)MS5611_Altitude);
 
             }
@@ -712,7 +714,7 @@ int main(void)
                     Derivative_Filter();
                     Kalman_filter_baro_climb();
                     /*
-                    if(stopping_throttle_upper_bound < channel3_in || channel3_in < stopping_throttle_lower_bound )
+                    if(stopping_throttle_upper_bound_fine < channel3_in || channel3_in < stopping_throttle_lower_bound_fine )
                     {
                         complementary_count++;
                     }
