@@ -45,8 +45,8 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //palstance in 32768，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
 float KP_THETA_X = 3, KP_THETA_Y = 3, KP_THETA_Z = 3;//常量
 float kp_theta_x = 3, kp_theta_y = 3, kp_theta_z = 3;//变量
-float KP_OMEGA_X = 0.6 * 0.0610370, KP_OMEGA_Y = 0.5 * 0.0610370, KP_OMEGA_Z = 0.7 * 0.0610370; //常量
-float kp_omega_x = 0.6 * 0.0610370, kp_omega_y = 0.5 * 0.0610370, kp_omega_z = 0.7 * 0.0610370; //变量
+float KP_OMEGA_X = 0.55 * 0.0610370, KP_OMEGA_Y = 0.45 * 0.0610370, KP_OMEGA_Z = 0.65 * 0.0610370; //常量
+float kp_omega_x = 0.55 * 0.0610370, kp_omega_y = 0.45 * 0.0610370, kp_omega_z = 0.65 * 0.0610370; //变量
 float KP_ALPHA_X = 0.03, KP_ALPHA_Y = 0.03, KP_ALPHA_Z = 0;
 float kp_alpha_x = 0.03, kp_alpha_y = 0.03, kp_alpha_z = 0;
 //6*130=780;
