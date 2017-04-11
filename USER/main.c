@@ -312,7 +312,9 @@ float baro_trigger = 8; //the trigger to record channel3_in i.e. throttle in
 u8 stopping_throttle_upper_recorded = 0;//flag for recording done
 u8 stopping_throttle_lower_recorded = 0;
 u8 stopping_throttle_both_recorded = 0;
-u32 hover_range = 50;
+u32 hover_range_top = 10;
+u32 hover_range_bottom = 50;
+
 
 short accz_integral_deadzone = 3; //to create a deadzone and deal with steady noise
 
@@ -489,7 +491,7 @@ int main(void)
                     {
                         if(baro_trigger < baro_climb_rate)
                         {
-                            stopping_throttle_upper_bound = channel3_in + 3; //record the upper throttle
+                            stopping_throttle_upper_bound = channel3_in + hover_range_top; //record the upper throttle
                             stopping_throttle_upper_recorded = 1; //set flag
                         }
                     }
@@ -497,14 +499,14 @@ int main(void)
                     {
                         if(stopping_throttle_upper_recorded)
                         {
-                            stopping_throttle_lower_bound = stopping_throttle_upper_bound - hover_range; //record the upper throttle
+                            stopping_throttle_lower_bound = stopping_throttle_upper_bound -hover_range_top- hover_range_bottom; //record the upper throttle
                             stopping_throttle_lower_recorded = 1; //set flag
                         }
                     }
                     if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
                     {
                         stopping_throttle_both_recorded = 1; //set all done flag
-                        LED1 = 0; //Lightening green LED£¬showing range recorded.
+                        LED0 = 1; //Darkening red LED£¬showing range recorded.
                     }
                 }
             }

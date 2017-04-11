@@ -12,6 +12,7 @@
 		
 6.phenomenon:	1.remove kalman filter for baro altitude,it works worse.
 		2.it works.haha.but not perfect.video:20170411_112132.mp4
+		3.
 
 7.solutions: 
 
