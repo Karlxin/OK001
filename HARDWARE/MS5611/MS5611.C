@@ -120,8 +120,8 @@ unsigned long MS561101BA_getConversion(uint8_t command)
     IIC_Wait_Ack();
     IIC_Stop();
 
-    delay_ms(8);
-    delay_us(220);
+    delay_ms(9);
+    delay_us(40);
 
     IIC_Start();
     IIC_Send_Byte(0xEE); 		//–¥µÿ÷∑

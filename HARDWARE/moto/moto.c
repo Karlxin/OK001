@@ -231,22 +231,31 @@ void Accz_filter(void)
     }
 }
 
-#define Filter_Num3 1//sliding window with 6 values
-void Altitude_filter(void)
+extern float angle_roll_out,angle_pitch_out,angle_yaw_out;
+
+
+#define Filter_Num3 4//sliding window with 6 values
+void Angle_filter(void)
 {
-    static float Filter_Altitude[Filter_Num3];//if use integer,we will lose the value
+    static float Filter_angle_roll[Filter_Num3], Filter_angle_pitch[Filter_Num3], Filter_angle_yaw[Filter_Num3];
     static uint8_t Filter_count3;
-    float Filter_sum_Altitude = 0;
+    float Filter_sum_angle_roll = 0, Filter_sum_angle_pitch = 0, Filter_sum_angle_yaw = 0;
     uint8_t i;
 
-    Filter_Altitude[Filter_count3] = MS5611_Altitude;
+    Filter_angle_roll[Filter_count3] = roll;
+    Filter_angle_pitch[Filter_count3] = pitch;
+    Filter_angle_yaw[Filter_count3] = yaw;
 
     for(i = 0; i < Filter_Num3; i++)
     {
-        Filter_sum_Altitude += Filter_Altitude[i];
+        Filter_sum_angle_roll += Filter_angle_roll[i];
+        Filter_sum_angle_pitch += Filter_angle_pitch[i];
+        Filter_sum_angle_yaw += Filter_angle_yaw[i];
     }
 
-    Altitude_out = Filter_sum_Altitude / Filter_Num3;
+    angle_roll_out = Filter_sum_angle_roll / Filter_Num3;
+    angle_pitch_out = Filter_sum_angle_pitch / Filter_Num3;
+    angle_yaw_out = Filter_sum_angle_yaw / Filter_Num3;
 
     Filter_count3++;
 

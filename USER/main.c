@@ -92,6 +92,9 @@ float temp_gyxc = 0, temp_gyyc = 0, temp_gyzc = 0; //the temp for gyrometer offs
 short aacx_chushi, aacy_chushi, aacz_chushi;
 float temp_axc = 0, temp_ayc = 0, temp_azc = 0;
 
+float angle_roll,angle_pitch,angle_yaw;
+float angle_roll_out,angle_pitch_out,angle_yaw_out;
+
 u32 gyro_temp_time = 0;
 float gyro_temp_dt = 0;
 short gyrox_temp = 0, gyroy_temp = 0, gyroz_temp = 0;
@@ -307,8 +310,8 @@ u32 complementary_count = 1;
 
 u32 stopping_throttle_upper_bound_coarse = 1600;//the hover upper bound throttle
 u32 stopping_throttle_lower_bound_coarse = 1400;
-u32 stopping_throttle_upper_bound_fine=1600;
-u32 stopping_throttle_lower_bound_fine=1400;
+u32 stopping_throttle_upper_bound_fine = 1600;
+u32 stopping_throttle_lower_bound_fine = 1400;
 u32 stopping_throttle_temp;
 float baro_trigger = 8; //the trigger to record channel3_in i.e. throttle in
 u8 stopping_throttle_upper_recorded = 0;//flag for recording done
@@ -319,6 +322,7 @@ u32 hover_range_bottom = 50;
 
 
 short accz_integral_deadzone = 3; //to create a deadzone and deal with steady noise
+extern void Angle_filter(void);
 
 //main top
 int main(void)
@@ -484,35 +488,6 @@ int main(void)
         {
             erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
             debug[1]++;
-
-            if(!stopping_throttle_both_recorded)
-            {
-                if(jiesuokeyi&&(stopping_throttle_lower_bound_coarse<channel3_in)&&(channel3_in<stopping_throttle_upper_bound_coarse))
-                {
-                    if(!stopping_throttle_upper_recorded)
-                    {
-                        if(baro_trigger < baro_climb_rate)
-                        {
-                            stopping_throttle_upper_bound_fine = channel3_in + hover_range_top; //record the upper throttle
-                            stopping_throttle_upper_recorded = 1; //set flag
-                        }
-                    }
-                    if(!stopping_throttle_lower_recorded)
-                    {
-                        if(stopping_throttle_upper_recorded)
-                        {
-                            stopping_throttle_lower_bound_fine = stopping_throttle_upper_bound_fine -hover_range_top- hover_range_bottom; //record the upper throttle
-                            stopping_throttle_lower_recorded = 1; //set flag
-                        }
-                    }
-                    if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
-                    {
-                        stopping_throttle_both_recorded = 1; //set all done flag
-                        LED0 = 1; //Darkening red LED£¬showing range recorded.
-                    }
-                }
-            }
-
         }
         //two ms bottom
 
@@ -524,9 +499,11 @@ int main(void)
             debug[2]++;
 
             mpu_dmp_get_data(&pitch, &roll, &yaw);//over amazing 52ms,move 50ms delay and we got 2.1ms,use dmp hardware
-            roll_err = roll - desroll; //get roll_err
-            pitch_err = pitch - despitch;
-            yaw_err = yaw - desyaw;
+            Angle_filter();
+			
+			roll_err = angle_roll_out - desroll; //get roll_err
+            pitch_err = angle_pitch_out - despitch;
+            yaw_err = angle_yaw_out - desyaw;
 
         }
         //five ms bottom
@@ -632,14 +609,7 @@ int main(void)
                 }
             }
 
-            if(channel3_in > 1100 && jiesuokeyi) //only when channel3 >1100 and jiesuokeyi will update motor controlling
-            {
-                //cyberNation_alpha();//noise is too big
-                cyberNation_omega();
-                cyberNation_theta();
-                Sink_compensation();//sink offset superposition
-                Moto_Throttle(desthrottle);//core 2 called in 1 place
-            }
+
             //-----------------------------Control and Throttle update bottom--------------------------------------------
 
         }
@@ -650,10 +620,45 @@ int main(void)
         {
             ershihaomiao = xitongshijian * 0.005f; //visiting by twenty milliseconds resolution
             debug[4]++;
-            if(channel3_in > 1100 && jiesuokeyi)
+
+            if(channel3_in > 1100 && jiesuokeyi) //only when channel3 >1100 and jiesuokeyi will update motor controlling
             {
+                //cyberNation_alpha();//noise is too big
+                cyberNation_omega();
+                cyberNation_theta();
+                Sink_compensation();//sink offset superposition
                 Altitude_hold_update();//this frequency may be enough.altitude holding superposition
+                Moto_Throttle(desthrottle);//core 2 called in 1 place
             }
+
+            if(!stopping_throttle_both_recorded)
+            {
+                if(jiesuokeyi && (stopping_throttle_lower_bound_coarse < channel3_in) && (channel3_in < stopping_throttle_upper_bound_coarse))
+                {
+                    if(!stopping_throttle_upper_recorded)
+                    {
+                        if(baro_trigger < baro_climb_rate)
+                        {
+                            stopping_throttle_upper_bound_fine = channel3_in + hover_range_top; //record the upper throttle
+                            stopping_throttle_upper_recorded = 1; //set flag
+                        }
+                    }
+                    if(!stopping_throttle_lower_recorded)
+                    {
+                        if(stopping_throttle_upper_recorded)
+                        {
+                            stopping_throttle_lower_bound_fine = stopping_throttle_upper_bound_fine - hover_range_top - hover_range_bottom; //record the upper throttle
+                            stopping_throttle_lower_recorded = 1; //set flag
+                        }
+                    }
+                    if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
+                    {
+                        stopping_throttle_both_recorded = 1; //set all done flag
+                        LED0 = 1; //Darkening red LED£¬showing range recorded.
+                    }
+                }
+            }
+
         }
         //twenty ms bottom
 
@@ -667,7 +672,7 @@ int main(void)
             //serial top
             if(USART1_Open)
             {
-                ANO_DT_Send_Status((float)roll, (float)pitch, (float)yaw, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
+                ANO_DT_Send_Status((float)angle_roll_out, (float)angle_pitch_out, (float)angle_yaw_out, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
                 ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_recorded, (u16) stopping_throttle_lower_recorded, (u16) stopping_throttle_both_recorded, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) stopping_throttle_upper_bound_fine, (u16) stopping_throttle_lower_bound_fine, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
                 ANO_DT_Send_Senser((s16)aacx , (s16)aacy, (s16)(accz_X_hat_minus * cosf(pitch)*cosf(roll) - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_X_hat_minus, (s16)acc_climb_rate, (s16)baro_climb_rate, (s32)MS5611_Altitude);
