@@ -10,7 +10,8 @@
 5.todo:		1.altitude hold
 		
 		
-6.phenomenon:	1.all right,but not perfect.video:20170410_201709.mp4
+6.phenomenon:	1.remove kalman filter for baro altitude,it works worse.
+		2.it works.haha.but not perfect.video:20170411_112132.mp4
 
 7.solutions: 
 

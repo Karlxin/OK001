@@ -25,7 +25,7 @@ I hope some day we will meet each other with our dreams achieved.
 Good Luck!
 
 EL PSY CONGROO
---------------------------------version information top-------------------------------------------*/
+--------------------------------version information bottom-------------------------------------------*/
 
 #include "led.h"//light emitting diode head file 
 #include "delay.h"//delay head file
@@ -191,8 +191,8 @@ float Altitude_P = 0; //error variance
 
 //---baro Climb Karlman top
 extern void Kalman_filter_baro_climb(void);
-float baro_climb_R = 3;
-float baro_climb_Q = 0.01; //process Variance,3/10=0.3
+float baro_climb_R = 1;
+float baro_climb_Q = 1; //process Variance,3/10=0.3
 float baro_climb_K = 0; //kalman gain
 float baro_climb_X_hat = 0; //init predict for Climb rate
 float baro_climb_X_hat_minus = 0; //previous predict for Climb rate
@@ -308,7 +308,7 @@ u32 complementary_count = 1;
 u32 stopping_throttle_upper_bound = 1600;//the hover upper bound throttle
 u32 stopping_throttle_lower_bound = 1400;
 u32 stopping_throttle_temp;
-float baro_trigger = 5; //the trigger to record channel3_in i.e. throttle in
+float baro_trigger = 8; //the trigger to record channel3_in i.e. throttle in
 u8 stopping_throttle_upper_recorded = 0;//flag for recording done
 u8 stopping_throttle_lower_recorded = 0;
 u8 stopping_throttle_both_recorded = 0;
@@ -341,7 +341,7 @@ int main(void)
     TIM_SetCompare3(TIM3, 2000);
     TIM_SetCompare4(TIM3, 2000);
 
-    delay_ms(5000);
+    delay_ms(5000);//delay 5000 millisecond
 
     TIM_SetCompare1(TIM3, 1000);
     TIM_SetCompare2(TIM3, 1000);
@@ -353,8 +353,8 @@ int main(void)
     MPU_Init();//over 0.103s
     while(mpu_dmp_init())//is mpu initialization done
     {
-        delay_ms(200);//ÑÓ³Ù200ms
-        delay_ms(200);//ÑÓ³Ù200ms
+        delay_ms(200);
+        delay_ms(200);
     }//over 1.91s
     delay_ms(1000);
     IIC_Init();//inter integrated circuit bus protocol,over 0.00546ms
@@ -418,7 +418,7 @@ int main(void)
     delay_ms(10);
 
     LED_Init();//over 0.01044ms
-    LED0 = 1; //Darkening red LED,showing ARMED
+    LED0 = 1; //Darkening red LED,showing DISARMED
     LED1 = 0; //Lightening green LED£¬showing DISARMED
 
     delay_ms(10);
@@ -456,44 +456,7 @@ int main(void)
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //get acc data,over 0.6ms
             {
                 Accz_filter();//sliding window filter
-                Kalman_filter_accz();
-
-                if(!stopping_throttle_both_recorded)
-                {
-                    if(jiesuokeyi)
-                    {
-                        if(_fabsf(desroll) < 1 && _fabsf(despitch) < 1)
-                        {
-                            if(!stopping_throttle_upper_recorded)
-                            {
-                                if(baro_trigger<baro_climb_rate)
-                                {
-                                    stopping_throttle_upper_bound = channel3_in + 3; //record the upper throttle
-                                    stopping_throttle_upper_recorded = 1; //set flag
-                                }
-                            }
-                            if(!stopping_throttle_lower_recorded)
-                            {
-                                if(stopping_throttle_upper_recorded)
-                                {
-                                    stopping_throttle_lower_bound = stopping_throttle_upper_bound - hover_range; //record the upper throttle
-                                    stopping_throttle_lower_recorded = 1; //set flag
-                                }
-                            }
-                            if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
-                            {
-                                stopping_throttle_both_recorded = 1; //set all done flag
-								LED1 = 0; //Lightening green LED£¬showing range recorded.
-                            }
-                        }
-                    }
-                }
-                else//both bound recorded
-                {
-                    //accz_dt = (xitongshijian - accz_temp_time) * 0.0001;
-                    //accz_temp_time = xitongshijian;
-                    //acc_climb_rate += (__fabs((accz_X_hat_minus * cosf(pitch) * cosf(roll)) - aacz_chushi) < accz_integral_deadzone ? 0 : ((accz_X_hat_minus * cosf(pitch) * cosf(roll)) - aacz_chushi)) * 0.0596942 * accz_dt;
-                }
+                //Kalman_filter_accz();
             }
 
             if(!MPU_Get_Gyroscope(&gyro[0], &gyro[1], &gyro[2]))  //get gyro data,over 0.6ms
@@ -501,7 +464,7 @@ int main(void)
                 Gyro_filter();//sliding window filter,over 0.02ms
                 if(kalman_gyro_Open)
                 {
-                    Kalman_filter_gyro();
+                    //Kalman_filter_gyro();
                     gyrox_out = gyro_X_hat_minus[0];
                     gyroy_out = gyro_X_hat_minus[1];
                     gyroz_out = gyro_X_hat_minus[2];
@@ -511,15 +474,44 @@ int main(void)
         }
         //ms bottom
 
-        /*
+
         //two ms top
         if(xitongshijian * 0.05f > erhaomiao + 1)
         {
             erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
             debug[1]++;
+
+            if(!stopping_throttle_both_recorded)
+            {
+                if(jiesuokeyi)
+                {
+                    if(!stopping_throttle_upper_recorded)
+                    {
+                        if(baro_trigger < baro_climb_rate)
+                        {
+                            stopping_throttle_upper_bound = channel3_in + 3; //record the upper throttle
+                            stopping_throttle_upper_recorded = 1; //set flag
+                        }
+                    }
+                    if(!stopping_throttle_lower_recorded)
+                    {
+                        if(stopping_throttle_upper_recorded)
+                        {
+                            stopping_throttle_lower_bound = stopping_throttle_upper_bound - hover_range; //record the upper throttle
+                            stopping_throttle_lower_recorded = 1; //set flag
+                        }
+                    }
+                    if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
+                    {
+                        stopping_throttle_both_recorded = 1; //set all done flag
+                        LED1 = 0; //Lightening green LED£¬showing range recorded.
+                    }
+                }
+            }
+
         }
         //two ms bottom
-        */
+
 
         //five ms top
         if(xitongshijian * 0.02f > wuhaomiao + 1)
@@ -619,13 +611,13 @@ int main(void)
 
                 if(channel3_in < 1100 && channel4_in > 1900)//throttle<1100,yaw>1900,i.e.,the stick of throttle to the very right and bottom
                 {
-                    if(baochijiesuo == 0)//counter of arming=0 
+                    if(baochijiesuo == 0)//counter of arming=0
                     {
                         baochijiesuo = miaozhong;//get the system time
                     }
                     if((miaozhong - baochijiesuo) >= 5)//holding arming over five seconds
                     {
-                        jiesuokeyi = 1;//set flag of arming 
+                        jiesuokeyi = 1;//set flag of arming
                         LED1 = 1; //green led dark stand for arming
                         LED0 = 0; //red led light stand for arming.please be careful of rotating propeller
                     }
@@ -702,6 +694,7 @@ int main(void)
                 Altitude_out = MS561101BA_get_altitude(MS5611_Pressure / Pressure_chushi);
                 Kalman_filter_alt();
                 Altitude_samples[Altitude_sample_index] = Altitude_X_hat_minus;
+                //Altitude_samples[Altitude_sample_index] = MS5611_Altitude;
                 Altitude_samples_time_stamps[Altitude_sample_index] = xitongshijian * 0.0001f;
                 Altitude_sample_index++;
                 if(Altitude_sample_index == 7)
@@ -716,7 +709,7 @@ int main(void)
                 {
                     Derivative_Filter();
                     Kalman_filter_baro_climb();
-					/*
+                    /*
                     if(stopping_throttle_upper_bound < channel3_in || channel3_in < stopping_throttle_lower_bound )
                     {
                         complementary_count++;
@@ -726,7 +719,7 @@ int main(void)
                         complementation_filter();
                         complementary_count = 1;
                     }
-					*/
+                    */
                 }
             }
         }
