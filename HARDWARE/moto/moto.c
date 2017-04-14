@@ -43,10 +43,10 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //10000*0.03=300
 //angle by degree
 //palstance in 32768，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
-float KP_THETA_X = 3, KP_THETA_Y = 3, KP_THETA_Z = 3;//常量
-float kp_theta_x = 3, kp_theta_y = 3, kp_theta_z = 3;//变量
-float KP_OMEGA_X = 0.55 * 0.0610370, KP_OMEGA_Y = 0.45 * 0.0610370, KP_OMEGA_Z = 0.65 * 0.0610370; //常量
-float kp_omega_x = 0.55 * 0.0610370, kp_omega_y = 0.45 * 0.0610370, kp_omega_z = 0.65 * 0.0610370; //变量
+float KP_THETA_X = 2.3, KP_THETA_Y = 2.3, KP_THETA_Z = 2.3;//常量
+float kp_theta_x = 2.3, kp_theta_y = 2.3, kp_theta_z = 2.3;//变量
+float KP_OMEGA_X = 0.46 * 0.0610370, KP_OMEGA_Y = 0.46 * 0.0610370, KP_OMEGA_Z = 0.6 * 0.0610370; //常量
+float kp_omega_x = 0.46 * 0.0610370, kp_omega_y = 0.46 * 0.0610370, kp_omega_z = 0.6 * 0.0610370; //变量
 float KP_ALPHA_X = 0.03, KP_ALPHA_Y = 0.03, KP_ALPHA_Z = 0;
 float kp_alpha_x = 0.03, kp_alpha_y = 0.03, kp_alpha_z = 0;
 //6*130=780;
@@ -142,10 +142,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
 
-    d1 = Constrain_up(desthrottle, 1780) + Constrain(cNd1_omega, 300, -300)+ Constrain(cNd1_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //              CW3     1CCW	     / \				 
-    d2 = Constrain_up(desthrottle, 1780) + Constrain(cNd2_omega, 300, -300)+ Constrain(cNd2_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //  planform        * *           / | \ X轴      	     Y轴
-    d3 = Constrain_up(desthrottle, 1780) + Constrain(cNd3_omega, 300, -300)+ Constrain(cNd3_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1780) + Constrain(cNd4_omega, 300, -300)+ Constrain(cNd4_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //      	      CCW2    4CW         |
+    d1 = Constrain_up(desthrottle, 1500) + Constrain(cNd1_omega, 300, -300)+ Constrain(cNd1_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //              CW3     1CCW	     / \				 
+    d2 = Constrain_up(desthrottle, 1500) + Constrain(cNd2_omega, 300, -300)+ Constrain(cNd2_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //  planform        * *           / | \ X轴      	     Y轴
+    d3 = Constrain_up(desthrottle, 1500) + Constrain(cNd3_omega, 300, -300)+ Constrain(cNd3_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1500) + Constrain(cNd4_omega, 300, -300)+ Constrain(cNd4_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //      	      CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }

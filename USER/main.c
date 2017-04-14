@@ -12,7 +12,7 @@ checkout a test version or a stable version.
 
 postscript:
 I am very grateful to Andrew Ng for the dreams of Artificial Intelligence and the open but valuable
-course of machine learning in Coursera.
+course of machine learning in Coursera.Please make others' life better.
 
 If you wanted experiments videos,please send emails to Karl with 410824290@qq.com.
 
@@ -265,7 +265,7 @@ extern void Kalman_filter_gyro(void);
 //float gyro_dt[3] = {0.01,0.01,0.01}; //the delta time
 //u32 gyro_temp_time = 0; //the record time
 float gyro_R[3] = {1, 1, 1}; //3sigma measurement variance
-float gyro_Q[3] = {3965497, 991221, 6729}; //process Variance
+float gyro_Q[3] = {707, 146, 427}; //process Variance
 float gyro_K[3] = {0, 0, 0}; //kalman gain
 float gyro_X_hat[3] = {0, 0, 0}; //init predict
 float gyro_X_hat_minus[3] = {0, 0, 0}; //previous predict
@@ -334,7 +334,7 @@ int main(void)
     u8 flymode = 0;
     int16_t temp1, temp2,  desthrottle, temp4; //to convert channel pulse width modulation wave to expectation angle
     u8 i;//for for loop
-    u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
+    u8 USART1_Open = 0;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
     u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
 
@@ -472,10 +472,10 @@ int main(void)
                 Gyro_filter();//sliding window filter,over 0.02ms
                 if(kalman_gyro_Open)
                 {
-                    //Kalman_filter_gyro();
-                    gyrox_out = gyro_X_hat_minus[0];
-                    gyroy_out = gyro_X_hat_minus[1];
-                    gyroz_out = gyro_X_hat_minus[2];
+                    Kalman_filter_gyro();
+                    //gyrox_out = gyro_X_hat_minus[0];
+                    //gyroy_out = gyro_X_hat_minus[1];
+                    //gyroz_out = gyro_X_hat_minus[2];
                 }
             }
             //read MPU bottom
@@ -675,7 +675,7 @@ int main(void)
                 ANO_DT_Send_Status((float)angle_roll_out, (float)angle_pitch_out, (float)angle_yaw_out, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
                 ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_recorded, (u16) stopping_throttle_lower_recorded, (u16) stopping_throttle_both_recorded, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) stopping_throttle_upper_bound_fine, (u16) stopping_throttle_lower_bound_fine, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
-                ANO_DT_Send_Senser((s16)aacx , (s16)aacy, (s16)(accz_X_hat_minus * cosf(pitch)*cosf(roll) - aacz_chushi) * 0.05978, (s16)gyrox_out, (s16)gyroy_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_X_hat_minus, (s16)acc_climb_rate, (s16)baro_climb_rate, (s32)MS5611_Altitude);
+                ANO_DT_Send_Senser((s16)gyro_X_hat_minus[0] , (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_rate, (s16)baro_climb_X_hat_minus, (s32)MS5611_Altitude);
 
             }
             else if(USART2_Open)
