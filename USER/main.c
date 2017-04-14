@@ -7,18 +7,20 @@ Version:dev_003
 
 features:To be continued...
 
-Notice:dev version created without experiment.If we want a stable version,we could go to github and
-checkout a test version or a stable version.
+Notice:Dev version created without large experiment.The comments for every single line of the code will
+be added soon.Karl has a whole theory to explain the control law and guide for optimization of gains.
+
+
 
 postscript:
 I am very grateful to Andrew Ng for the dreams of Artificial Intelligence and the open but valuable
-course of machine learning in Coursera.Please make others' life better.
+course of machine learning in Coursera.
 
-If you wanted experiments videos,please send emails to Karl with 410824290@qq.com.
+To make your life better.Making others' life better also.
 
-Your time is valuable,please please please do not do the things wasting your time!
+If you wanted experiments videos and theory,please send emails to Karl with 410824290@qq.com.
 
-no time for us to waste.do our best to build the artificial intelligence
+Your time is valuable.No time for us to waste.Do our best to build the artificial intelligence
 
 I hope some day we will meet each other with our dreams achieved.
 
