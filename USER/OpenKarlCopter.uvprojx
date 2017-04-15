@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\TIM3;..\HARDWARE\control;..\HARDWARE\moto;..\HARDWARE\TIMER;..\HARDWARE\KEY;..\HARDWARE\EXTI;..\HARDWARE\WDG;..\HARDWARE\PWM;..\HARDWARE\MS5611;..\HARDWARE\DMP;..\HARDWARE\LCD;..\HARDWARE\IIC;..\HARDWARE\MPU6050;..\HARDWARE\MPU6050\eMPL;..\HARDWARE\ANO;..\HARDWARE\IMU</IncludePath>
+              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\TIM3;..\HARDWARE\control;..\HARDWARE\moto;..\HARDWARE\TIMER;..\HARDWARE\PWM;..\HARDWARE\MS5611;..\HARDWARE\DMP;..\HARDWARE\IIC;..\HARDWARE\MPU6050;..\HARDWARE\MPU6050\eMPL;..\HARDWARE\ANO;..\HARDWARE\IMU;..\HARDWARE\SPI;..\HARDWARE\FLASH</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -444,11 +444,6 @@
               <FilePath>..\HARDWARE\TIMER\timer.c</FilePath>
             </File>
             <File>
-              <FileName>wdg.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\WDG\wdg.c</FilePath>
-            </File>
-            <File>
               <FileName>pwm.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\PWM\pwm.c</FilePath>
@@ -492,6 +487,16 @@
               <FileName>imu.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\IMU\imu.c</FilePath>
+            </File>
+            <File>
+              <FileName>flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\FLASH\flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\SPI\spi.c</FilePath>
             </File>
           </Files>
         </Group>

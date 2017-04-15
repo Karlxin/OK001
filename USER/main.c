@@ -36,7 +36,6 @@ EL PSY CONGROO
 #include "stm32f10x.h"//stm32f10 controller head file
 #include "moto.h"//motor head file
 #include "timer.h"//timer 5 and 4 head file,timer 5 for system time,timer 4 for capture of pulse width modulation wave 
-#include "wdg.h"//watch dog head file
 #include "pwm.h"//timer 3 for output of pulse width modulation wave 
 #include "imu.h"//inertial measurement unit
 #include "mpu6050.h"//motion process unit with accelerometer and gyrometer
@@ -44,6 +43,8 @@ EL PSY CONGROO
 #include "inv_mpu_dmp_motion_driver.h"//mpu hardware config and reading config head file
 #include "math.h"//math head file
 #include <stdio.h>//standard input output with buffer
+#include "spi.h"
+#include "flash.h"
 
 extern void TIM3_PWM_Init(u16 arr, u16 psc);
 extern void TIM4_Cap_Init(u16 arr, u16 psc);
@@ -94,8 +95,8 @@ float temp_gyxc = 0, temp_gyyc = 0, temp_gyzc = 0; //the temp for gyrometer offs
 short aacx_chushi, aacy_chushi, aacz_chushi;
 float temp_axc = 0, temp_ayc = 0, temp_azc = 0;
 
-float angle_roll,angle_pitch,angle_yaw;
-float angle_roll_out,angle_pitch_out,angle_yaw_out;
+float angle_roll, angle_pitch, angle_yaw;
+float angle_roll_out, angle_pitch_out, angle_yaw_out;
 
 u32 gyro_temp_time = 0;
 float gyro_temp_dt = 0;
@@ -326,6 +327,18 @@ u32 hover_range_bottom = 50;
 short accz_integral_deadzone = 3; //to create a deadzone and deal with steady noise
 extern void Angle_filter(void);
 
+//spi flash data top
+u8 datatemp[12];//to send to serial
+u32 FLASH_SIZE = 8 * 1024 * 1024; //FLASH size of 8M Byte
+u8 TEXT_Buffer[1] = {0};
+
+
+uint16_t gaxyz[6] = {0, 0, 0, 0, 0, 0}; //gryo xyz acc xyz data temp
+#define SIZE_gaxyz sizeof(gaxyz)
+int16_t datatemp2[SIZE_gaxyz];//to send to serial
+//spi flash data bottom
+
+
 //main top
 int main(void)
 {
@@ -336,9 +349,13 @@ int main(void)
     u8 flymode = 0;
     int16_t temp1, temp2,  desthrottle, temp4; //to convert channel pulse width modulation wave to expectation angle
     u8 i;//for for loop
-    u8 USART1_Open = 0;//Open Serial by 500000 baud rate by setting it.
+    u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
     u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
+    u8 Flash_read_Open = 0; //flag for W25Q64 flash read
+    u8 Flash_write_Open = 1; //flag for W25Q64 flash read
+    u32 i2 = 0; //for read flash
+    u32 i3 = 0; //for write flash
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0，1，2，3；subclass by 0,1(2:0),over 0.0004ms
@@ -427,6 +444,21 @@ int main(void)
 
     delay_ms(10);
 
+    SPI_Flash_Init();  		//SPI FLASH 初始化
+
+    delay_ms(10);
+
+    while(SPI_Flash_ReadID() != W25Q64)							//检测不到W25Q64
+    {
+        LED0 = !LED0; //DS0闪烁
+        delay_ms(500);
+    }
+
+    //SPI_Flash_Write((u8 *)TEXT_Buffer, FLASH_SIZE - 100, SIZE);		//从倒数第100个地址处开始,写入SIZE长度的数据
+
+    //SPI_Flash_Read(datatemp, FLASH_SIZE - 100, SIZE);				//从倒数第100个地址处开始,读出SIZE个字节
+
+
     LED_Init();//over 0.01044ms
     LED0 = 1; //Darkening red LED,showing DISARMED
     LED1 = 0; //Lightening green LED，showing DISARMED
@@ -452,6 +484,34 @@ int main(void)
     wubaimiaozhong = xitongshijian * 0.0000002f;
     yiqianmiaozhong = xitongshijian * 0.0000001f;
     //------------------------------initiation bottom-----------------------------
+
+    //------------------------------read flash top--------------------------------
+    if(Flash_read_Open)
+    {
+        while(1)
+        {
+            if(channel3_in > 1300)
+            {
+                LED0 = 0;
+                while(i2 < 699000)
+                {
+                    SPI_Flash_Read(datatemp, 0 + i2 * 12, 12);
+                    gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
+                    gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
+                    gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
+                    gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
+                    gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
+                    gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
+                    delay_ms(5);//send data in 200Hz
+                    ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
+                    i2++;
+                }
+                LED0 = 1;
+            }
+
+        }
+    }
+    //------------------------------read flash bottom-----------------------------
 
     //loop top
     while(1)//using 8s to get there
@@ -481,6 +541,44 @@ int main(void)
                 }
             }
             //read MPU bottom
+
+            //------------------------------write flash top--------------------------------
+            if(Flash_write_Open)
+            {
+                if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
+                {
+                    datatemp[0] = aacx & 0x00ff; //little endian
+                    datatemp[1] = aacx >> 8;
+                    datatemp[2] = aacy & 0x00ff; //little endian
+                    datatemp[3] = aacy >> 8;
+                    datatemp[4] = aacz & 0x00ff; //little endian
+                    datatemp[5] = aacz >> 8;
+                    datatemp[6] = gyro[0] & 0x00ff; //little endian
+                    datatemp[7] = gyro[0] >> 8;
+                    datatemp[8] = gyro[1] & 0x00ff; //little endian
+                    datatemp[9] = gyro[1] >> 8;
+                    datatemp[10] = gyro[2] & 0x00ff; //little endian
+                    datatemp[11] = gyro[2] >> 8;
+                    SPI_Flash_Write(datatemp, 0 + i3 * 12, 12);//over 11ms
+
+                    /*//check for write top
+                    SPI_Flash_Read(datatemp, 0 + i3 * 12, 12);
+                    gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
+                    gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
+                    gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
+                    gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
+                    gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
+                    gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
+                    ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
+                    //check for write bottom*/
+
+                    i3++;
+                }
+            }
+            //------------------------------write flash bottom-----------------------------
+
+
+
         }
         //ms bottom
 
@@ -502,8 +600,8 @@ int main(void)
 
             mpu_dmp_get_data(&pitch, &roll, &yaw);//over amazing 52ms,move 50ms delay and we got 2.1ms,use dmp hardware
             Angle_filter();
-			
-			roll_err = angle_roll_out - desroll; //get roll_err
+
+            roll_err = angle_roll_out - desroll; //get roll_err
             pitch_err = angle_pitch_out - despitch;
             yaw_err = angle_yaw_out - desyaw;
 
@@ -672,7 +770,7 @@ int main(void)
             debug[5]++;
 
             //serial top
-            if(USART1_Open)
+            if(USART1_Open && !Flash_write_Open && !Flash_read_Open)
             {
                 ANO_DT_Send_Status((float)angle_roll_out, (float)angle_pitch_out, (float)angle_yaw_out, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
                 ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_recorded, (u16) stopping_throttle_lower_recorded, (u16) stopping_throttle_both_recorded, (u16) 0); //over 0.5ms
@@ -680,9 +778,9 @@ int main(void)
                 ANO_DT_Send_Senser((s16)gyro_X_hat_minus[0] , (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_rate, (s16)baro_climb_X_hat_minus, (s32)MS5611_Altitude);
 
             }
-            else if(USART2_Open)
+            else if(USART2_Open && !Flash_write_Open && !Flash_read_Open)
             {
-                //printf("  MS5611_Altitude =%fm\r\n", MS5611_Altitude);
+                printf("  MS5611_Altitude =%fm\r\n", MS5611_Altitude);
             }
             //serial bottom
         }
