@@ -1,6 +1,6 @@
 1.Target:	
 	
-2.realizing:	
+2.realizing:	1.adding black box for gaxyz 
 
 3.problem:	1.accelerometer is not good for calculate climb rate
 		2.the record when baro>5 does not work
@@ -12,7 +12,6 @@
 		
 		
 6.phenomenon:	
-		1.P to 2.3,D to 0.46 0.46 0.6.one safety,one wobble in up and down,one safety,the wobolle in roll damping remarkable.video:20170414_121015.mp4,20170414_145250.mp4,20170414_150702.mp4
 
 7.solutions: 
 

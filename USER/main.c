@@ -3,7 +3,7 @@ Started at 2016
 Created by Karlxin(410824290@qq.com)
 Github:https://github.com/Karlxin/OK001.git
 OpenKarlCopter
-Version:dev_003
+Version:dev_004
 
 features:To be continued...
 
@@ -328,15 +328,14 @@ short accz_integral_deadzone = 3; //to create a deadzone and deal with steady no
 extern void Angle_filter(void);
 
 //spi flash data top
-u8 datatemp[12];//to send to serial
+u8 datatemp[240];//to write a page in w25q64.
 u32 FLASH_SIZE = 8 * 1024 * 1024; //FLASH size of 8M Byte
-u8 TEXT_Buffer[1] = {0};
-
 
 uint16_t gaxyz[6] = {0, 0, 0, 0, 0, 0}; //gryo xyz acc xyz data temp
 #define SIZE_gaxyz sizeof(gaxyz)
 int16_t datatemp2[SIZE_gaxyz];//to send to serial
 //spi flash data bottom
+
 
 
 //main top
@@ -353,9 +352,11 @@ int main(void)
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
     u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
     u8 Flash_read_Open = 0; //flag for W25Q64 flash read
-    u8 Flash_write_Open = 1; //flag for W25Q64 flash read
+    u8 Flash_write_Open = 1; //flag for W25Q64 flash write
     u32 i2 = 0; //for read flash
     u32 i3 = 0; //for write flash
+    u32 i4 = 0; //for write flash
+    u32 i5 = 0; //for write flash
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0，1，2，3；subclass by 0,1(2:0),over 0.0004ms
@@ -448,16 +449,12 @@ int main(void)
 
     delay_ms(10);
 
+
     while(SPI_Flash_ReadID() != W25Q64)							//检测不到W25Q64
     {
         LED0 = !LED0; //DS0闪烁
         delay_ms(500);
     }
-
-    //SPI_Flash_Write((u8 *)TEXT_Buffer, FLASH_SIZE - 100, SIZE);		//从倒数第100个地址处开始,写入SIZE长度的数据
-
-    //SPI_Flash_Read(datatemp, FLASH_SIZE - 100, SIZE);				//从倒数第100个地址处开始,读出SIZE个字节
-
 
     LED_Init();//over 0.01044ms
     LED0 = 1; //Darkening red LED,showing DISARMED
@@ -484,34 +481,6 @@ int main(void)
     wubaimiaozhong = xitongshijian * 0.0000002f;
     yiqianmiaozhong = xitongshijian * 0.0000001f;
     //------------------------------initiation bottom-----------------------------
-
-    //------------------------------read flash top--------------------------------
-    if(Flash_read_Open)
-    {
-        while(1)
-        {
-            if(channel3_in > 1300)
-            {
-                LED0 = 0;
-                while(i2 < 699000)
-                {
-                    SPI_Flash_Read(datatemp, 0 + i2 * 12, 12);
-                    gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
-                    gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
-                    gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
-                    gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
-                    gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
-                    gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
-                    delay_ms(5);//send data in 200Hz
-                    ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
-                    i2++;
-                }
-                LED0 = 1;
-            }
-
-        }
-    }
-    //------------------------------read flash bottom-----------------------------
 
     //loop top
     while(1)//using 8s to get there
@@ -542,43 +511,6 @@ int main(void)
             }
             //read MPU bottom
 
-            //------------------------------write flash top--------------------------------
-            if(Flash_write_Open)
-            {
-                if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
-                {
-                    datatemp[0] = aacx & 0x00ff; //little endian
-                    datatemp[1] = aacx >> 8;
-                    datatemp[2] = aacy & 0x00ff; //little endian
-                    datatemp[3] = aacy >> 8;
-                    datatemp[4] = aacz & 0x00ff; //little endian
-                    datatemp[5] = aacz >> 8;
-                    datatemp[6] = gyro[0] & 0x00ff; //little endian
-                    datatemp[7] = gyro[0] >> 8;
-                    datatemp[8] = gyro[1] & 0x00ff; //little endian
-                    datatemp[9] = gyro[1] >> 8;
-                    datatemp[10] = gyro[2] & 0x00ff; //little endian
-                    datatemp[11] = gyro[2] >> 8;
-                    SPI_Flash_Write(datatemp, 0 + i3 * 12, 12);//over 11ms
-
-                    /*//check for write top
-                    SPI_Flash_Read(datatemp, 0 + i3 * 12, 12);
-                    gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
-                    gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
-                    gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
-                    gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
-                    gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
-                    gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
-                    ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
-                    //check for write bottom*/
-
-                    i3++;
-                }
-            }
-            //------------------------------write flash bottom-----------------------------
-
-
-
         }
         //ms bottom
 
@@ -604,6 +536,48 @@ int main(void)
             roll_err = angle_roll_out - desroll; //get roll_err
             pitch_err = angle_pitch_out - despitch;
             yaw_err = angle_yaw_out - desyaw;
+
+            /*//------------------------------read flash fast top--------------------------------
+            if(Flash_read_Open && !jiesuokeyi) //disarmed and Open read flash,that is to read the data in 10X rate.
+            {
+                while(channel3_in > 1300)
+                {
+                        LED0 = 0;
+                        while(i2 < 699000)
+                        {
+                            SPI_Flash_Read(datatemp, 0 + i2 * 12, 12);
+                            gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
+                            gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
+                            gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
+                            gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
+                            gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
+                            gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
+                            ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
+                            i2++;
+                        }
+                        LED0 = 1;
+                }
+            }
+            //------------------------------read flash fast bottom-----------------------------*/
+
+            //------------------------------read flash 200Hz top--------------------------------
+            if(Flash_read_Open && !jiesuokeyi) //disarmed and Open read flash,that is to read the data in 10X rate.
+            {
+                if(i2 < 699000)
+                {
+                    SPI_Flash_Read(datatemp, 0 + i2 * 12, 12);
+                    gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
+                    gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
+                    gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
+                    gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
+                    gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
+                    gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
+                    ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
+                    i2++;
+                }
+            }
+            //------------------------------read flash 200Hz bottom-----------------------------
+
 
         }
         //five ms bottom
@@ -675,14 +649,40 @@ int main(void)
                         jiesuokeyi = 0;//reset flag of disarming
                         LED1 = 0;//lightening green led stand for disarming
                         LED0 = 1;//darkening red led stand for disarming
+                        baochijiasuo = 0; //reset baochijiasuo counter
                     }
                 }
                 else
                 {
                     baochijiasuo = 0;//reset counter of holding disarming
                 }
+
+                if(channel3_in < 1100 && channel4_in > 1900)//armed but still holding for arming,that is to erase flash
+                {
+                    if(baochijiesuo == 0)//counter of arming=0
+                    {
+                        baochijiesuo = miaozhong;
+                    }
+
+                    if((miaozhong - baochijiesuo) >= 13)//holding arming over thirteen seconds
+                    {
+                        jiesuokeyi = 0;//set flag of disarming
+                        LED1 = 0; //green led light
+                        LED0 = 0; //red led light
+                        //both light means erasing the whole external FLASH
+                        SPI_Flash_Erase_Chip();
+                        LED1 =  0;
+                        LED0 = 1;
+                        baochijiesuo = 0; //reset baochijiesuo
+                        //return to initial status
+                    }
+                }
+                else
+                {
+                    baochijiesuo = 0;//reset baochijiesuo
+                }
             }
-            else//status is disarming
+            else//if disarmed
             {
                 d1 = 0;
                 d2 = 0;
@@ -701,11 +701,38 @@ int main(void)
                         jiesuokeyi = 1;//set flag of arming
                         LED1 = 1; //green led dark stand for arming
                         LED0 = 0; //red led light stand for arming.please be careful of rotating propeller
+                        baochijiesuo = 0; //reset baochijiesuo counter
                     }
                 }
                 else//channel3_in>1100,channel4_in<1900,that is throttle stick above bottom,yaw stick is not on the right
                 {
                     baochijiesuo = 0;//holding ARMED counter reset.
+                }
+
+                if(channel3_in < 1100 && channel4_in < 1100)//throttle<1100,yaw<1100,i.e. stick of throttle to the very left and down
+                {
+                    if(baochijiasuo == 0)//counter for holding disarming =0
+                    {
+                        baochijiasuo = miaozhong;//set counter for holding disarming to system seconds
+                    }
+                    if((miaozhong - baochijiasuo) >= 8)//holding stick for disarming maintained over eight seconds
+                    {
+                        if(Flash_read_Open)//when reading flash and we get there
+                        {
+                            LED1 = 0; //lighten green led stand for initial status
+                        }
+                        else//we are not reading flash
+                        {
+                            LED1 = 1; //darken green LED
+                        }
+                        Flash_read_Open = !Flash_read_Open; //open flash reader
+
+                        baochijiasuo = 0; //reset baochijiasuo counter
+                    }
+                }
+                else
+                {
+                    baochijiasuo = 0;//reset counter of holding disarming
                 }
             }
 
@@ -783,6 +810,36 @@ int main(void)
                 printf("  MS5611_Altitude =%fm\r\n", MS5611_Altitude);
             }
             //serial bottom
+
+            //write flash top
+            if(jiesuokeyi) //armed ok
+            {
+                if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
+                {
+                    datatemp[0 + i5 * 12] = aacx & 0x00ff; //little endian
+                    datatemp[1 + i5 * 12] = aacx >> 8;
+                    datatemp[2 + i5 * 12] = aacy & 0x00ff; //little endian
+                    datatemp[3 + i5 * 12] = aacy >> 8;
+                    datatemp[4 + i5 * 12] = aacz & 0x00ff; //little endian
+                    datatemp[5 + i5 * 12] = aacz >> 8;
+                    datatemp[6 + i5 * 12] = gyro[0] & 0x00ff; //little endian
+                    datatemp[7 + i5 * 12] = gyro[0] >> 8;
+                    datatemp[8 + i5 * 12] = gyro[1] & 0x00ff; //little endian
+                    datatemp[9 + i5 * 12] = gyro[1] >> 8;
+                    datatemp[10 + i5 * 12] = gyro[2] & 0x00ff; //little endian
+                    datatemp[11 + i5 * 12] = gyro[2] >> 8;
+
+                    i3++;
+                    i5++;
+                    if(i5 == 20) //we have collected 20 group data
+                    {
+                        SPI_Flash_Write2(datatemp, 0 + i4 * 240, 240);//over 1ms
+                        i4++;
+                        i5 = 0;
+                    }
+                }
+            }
+            //write flash bottom
         }
         //fifty ms bottom
 
@@ -839,6 +896,10 @@ int main(void)
         {
             miaozhong = xitongshijian * 0.0001f; //visit by seconds resolution
             debug[7]++;
+            if(Flash_read_Open)
+            {
+                LED1 = !LED1; //we are in the status of reading flash,so let the green led flash stand for reading flash
+            }
         }
         //seconds bottom
 

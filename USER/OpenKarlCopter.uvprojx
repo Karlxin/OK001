@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\TIM3;..\HARDWARE\control;..\HARDWARE\moto;..\HARDWARE\TIMER;..\HARDWARE\PWM;..\HARDWARE\MS5611;..\HARDWARE\DMP;..\HARDWARE\IIC;..\HARDWARE\MPU6050;..\HARDWARE\MPU6050\eMPL;..\HARDWARE\ANO;..\HARDWARE\IMU;..\HARDWARE\SPI;..\HARDWARE\FLASH</IncludePath>
+              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\TIM3;..\HARDWARE\control;..\HARDWARE\moto;..\HARDWARE\TIMER;..\HARDWARE\PWM;..\HARDWARE\MS5611;..\HARDWARE\IIC;..\HARDWARE\MPU6050;..\HARDWARE\MPU6050\eMPL;..\HARDWARE\ANO;..\HARDWARE\IMU;..\HARDWARE\SPI;..\HARDWARE\FLASH</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>

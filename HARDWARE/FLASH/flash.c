@@ -168,7 +168,7 @@ void SPI_Flash_Write(u8* pBuffer,u32 WriteAddr,u16 NumByteToWrite)
 	if(NumByteToWrite<=secremain)secremain=NumByteToWrite;//不大于4096个字节
 	while(1) 
 	{	
-		SPI_Flash_Read(SPI_FLASH_BUF,secpos*4096,4096);//读出整个扇区的内容,over11ms
+		SPI_Flash_Read(SPI_FLASH_BUF,secpos*4096,4096);//读出整个扇区的内容,over 11ms
 		for(i=0;i<secremain;i++)//校验数据
 		{
 			if(SPI_FLASH_BUF[secoff+i]!=0XFF)break;//需要擦除  	  
@@ -195,7 +195,7 @@ void SPI_Flash_Write(u8* pBuffer,u32 WriteAddr,u16 NumByteToWrite)
 			if(NumByteToWrite>4096)secremain=4096;	//下一个扇区还是写不完
 			else secremain=NumByteToWrite;			//下一个扇区可以写完了
 		}	 
-	};	 	 
+	}	 	 
 }
 //擦除整个芯片
 //整片擦除时间:
@@ -253,8 +253,12 @@ void SPI_Flash_WAKEUP(void)
 
 
 
-
-
+//Karl modification top
+void SPI_Flash_Write2(u8* pBuffer,u32 WriteAddr,u16 NumByteToWrite)   
+{ 
+	SPI_Flash_Write_NoCheck(pBuffer,WriteAddr,NumByteToWrite);//写已经擦除了的,直接写入扇区剩余区间. 				   
+}
+//Karl modification bottom
 
 
 
