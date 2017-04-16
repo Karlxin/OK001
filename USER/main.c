@@ -126,8 +126,9 @@ float temp_TEMP = 0;
 float roll_err, pitch_err, yaw_err;//error,roll_err=roll-desroll,desroll is the conversion of remote controller channel input
 float desroll, despitch, desyaw;//expectation
 
-short gyrox_out, gyroy_out, gyroz_out;//after sliding windows filter
+short gyro_out[3];//after sliding windows filter
 short accz_out;//after filter, and trans
+short gyro_cybernation[3];
 
 extern void Gyro_filter(void);
 extern void ANO_DT_Send_RCData(u16 thr, u16 yaw, u16 rol, u16 pit, u16 aux1, u16 aux2, u16 aux3, u16 aux4, u16 aux5, u16 aux6);
@@ -265,7 +266,7 @@ extern void Kalman_filter_gyro(void);
 //float gyro_dt[3] = {0.01,0.01,0.01}; //the delta time
 //u32 gyro_temp_time = 0; //the record time
 float gyro_R[3] = {1, 1, 1}; //3sigma measurement variance
-float gyro_Q[3] = {707, 146, 427}; //process Variance
+float gyro_Q[3] = {20, 25, 15}; //process Variance
 float gyro_K[3] = {0, 0, 0}; //kalman gain
 float gyro_X_hat[3] = {0, 0, 0}; //init predict
 float gyro_X_hat_minus[3] = {0, 0, 0}; //previous predict
@@ -327,11 +328,16 @@ extern void Angle_filter(void);
 //spi flash data top
 u8 datatemp[240];//to write a page in w25q64.
 u32 FLASH_SIZE = 8 * 1024 * 1024; //FLASH size of 8M Byte
-uint16_t gaxyz[6] = {0, 0, 0, 0, 0, 0}; //gryo xyz acc xyz data temp
+u16 gaxyz[6]; //gryo xyz acc xyz data temp
 
 u8 datatemp2[252];//to write a page in w25q61.recording the cybernation quantities
-uint16_t rpygxyzbc[7]={0,0,0,0,0,0,0};//roll pitch yaw gyro_out x y z baro climb rate
+u16 rpygxyzbc[7];//roll pitch yaw gyro_out x y z baro climb rate
+
+u8 datatemp3[234];
+u16 kgxyz_ogxyz_drpy_orpy_bcr[13];
+u32 temp_bcr;
 //spi flash data bottom
+
 
 
 
@@ -347,7 +353,7 @@ int main(void)
     u8 i;//for for loop
     u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
-    u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
+    u8 kalman_gyro_Open = 1; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
     u8 Flash_read_Open = 0; //flag for W25Q64 flash read
     u8 Flash_write_Open = 1; //flag for W25Q64 flash write
     u32 i2 = 0; //for read flash
@@ -355,7 +361,8 @@ int main(void)
     u32 i4 = 0; //for write flash
     u32 i5 = 0; //for write flash
     //0 to record raw grro acc xyz,1 to record the cybernation quantities
-    u8 record_option = 1;
+    //2 to record the 1 and expectation roll pitch yaw and kalman gyro
+    u8 record_option = 2;
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0£¬1£¬2£¬3£»subclass by 0,1(2:0),over 0.0004ms
@@ -503,10 +510,10 @@ int main(void)
                 if(kalman_gyro_Open)
                 {
                     Kalman_filter_gyro();
-                    //gyrox_out = gyro_X_hat_minus[0];
-                    //gyroy_out = gyro_X_hat_minus[1];
-                    //gyroz_out = gyro_X_hat_minus[2];
                 }
+				gyro_cybernation[0]=gyro_X_hat_minus[0];
+				gyro_cybernation[1]=gyro_X_hat_minus[1];
+				gyro_cybernation[2]=gyro_X_hat_minus[2];
             }
             //read MPU bottom
 
@@ -558,17 +565,48 @@ int main(void)
                 case 1:
                     if(i2 < 699000)
                     {
-                        SPI_Flash_Read(datatemp, 0 + i2 * 14, 14);
-						rpygxyzbc[0]= ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
-						rpygxyzbc[1]= ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
-						rpygxyzbc[2]= ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
-						rpygxyzbc[3]= ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
-						rpygxyzbc[4]= ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
-						rpygxyzbc[5]= ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
-						rpygxyzbc[6]=((u16)datatemp[13] << 8) | ((u16)datatemp[12]);
-						
-						ANO_DT_Send_Status((float)rpygxyzbc[0], (float)rpygxyzbc[1], (float)rpygxyzbc[2], (s32)0, (u8)0, (u8)0); //over 0.4ms
+                        SPI_Flash_Read(datatemp2, 0 + i2 * 14, 14);
+                        rpygxyzbc[0] = ((u16)datatemp2[1] << 8) | ((u16)datatemp2[0]);
+                        rpygxyzbc[1] = ((u16)datatemp2[3] << 8) | ((u16)datatemp2[2]);
+                        rpygxyzbc[2] = ((u16)datatemp2[5] << 8) | ((u16)datatemp2[4]);
+                        rpygxyzbc[3] = ((u16)datatemp2[7] << 8) | ((u16)datatemp2[6]);
+                        rpygxyzbc[4] = ((u16)datatemp2[9] << 8) | ((u16)datatemp2[8]);
+                        rpygxyzbc[5] = ((u16)datatemp2[11] << 8) | ((u16)datatemp2[10]);
+                        rpygxyzbc[6] = ((u16)datatemp2[13] << 8) | ((u16)datatemp2[12]);
+
+                        ANO_DT_Send_Status((float)rpygxyzbc[0], (float)rpygxyzbc[1], (float)rpygxyzbc[2], (s32)0, (u8)0, (u8)0); //over 0.4ms
                         ANO_DT_Send_Senser((s16)0, (s16)0, (s16)0, rpygxyzbc[3], rpygxyzbc[4], rpygxyzbc[5], rpygxyzbc[6], (s16)0, (s16)0, (s32)0);
+                        i2++;
+                    }
+                    break;
+                case 2:
+                    if(i2 < 699000)
+                    {
+                        SPI_Flash_Read(datatemp3, 0 + i2 * 26, 26);
+                        kgxyz_ogxyz_drpy_orpy_bcr[0] = ((u16)datatemp3[1] << 8) | ((u16)datatemp3[0]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[1] = ((u16)datatemp3[3] << 8) | ((u16)datatemp3[2]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[2] = ((u16)datatemp3[5] << 8) | ((u16)datatemp3[4]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[3] = ((u16)datatemp3[7] << 8) | ((u16)datatemp3[6]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[4] = ((u16)datatemp3[9] << 8) | ((u16)datatemp3[8]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[5] = ((u16)datatemp3[11] << 8) | ((u16)datatemp3[10]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[6] = ((u16)datatemp3[13] << 8) | ((u16)datatemp3[12]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[7] = ((u16)datatemp3[15] << 8) | ((u16)datatemp3[14]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[8] = ((u16)datatemp3[17] << 8) | ((u16)datatemp3[16]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[9] = ((u16)datatemp3[19] << 8) | ((u16)datatemp3[18]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[10] = ((u16)datatemp3[21] << 8) | ((u16)datatemp3[20]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[11] = ((u16)datatemp3[23] << 8) | ((u16)datatemp3[22]);
+                        kgxyz_ogxyz_drpy_orpy_bcr[12] = ((u16)datatemp3[25] << 8) | ((u16)datatemp3[24]);
+						
+						
+						
+                        ANO_DT_Send_Senser(kgxyz_ogxyz_drpy_orpy_bcr[0], kgxyz_ogxyz_drpy_orpy_bcr[1], \
+                                           kgxyz_ogxyz_drpy_orpy_bcr[2], kgxyz_ogxyz_drpy_orpy_bcr[3], kgxyz_ogxyz_drpy_orpy_bcr[4], \
+                                           kgxyz_ogxyz_drpy_orpy_bcr[5], kgxyz_ogxyz_drpy_orpy_bcr[6], kgxyz_ogxyz_drpy_orpy_bcr[7], \
+                                           kgxyz_ogxyz_drpy_orpy_bcr[8], (s32)0);
+                        ANO_DT_Send_Status((float)kgxyz_ogxyz_drpy_orpy_bcr[9], (float)kgxyz_ogxyz_drpy_orpy_bcr[10], \
+                                           (float)kgxyz_ogxyz_drpy_orpy_bcr[11], (s32)0, (u8)0, (u8)0); //over 0.4ms
+						//ANO_DT_Send_Status((float)kgxyz_ogxyz_drpy_orpy_bcr[12], (float)0, \
+                                           (float)0, (s32)0, (u8)0, (u8)0); //over 0.4ms
                         i2++;
                     }
                     break;
@@ -803,7 +841,7 @@ int main(void)
                 ANO_DT_Send_Status((float)angle_roll_out, (float)angle_pitch_out, (float)angle_yaw_out, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
                 ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_recorded, (u16) stopping_throttle_lower_recorded, (u16) stopping_throttle_both_recorded, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) stopping_throttle_upper_bound_fine, (u16) stopping_throttle_lower_bound_fine, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
-                ANO_DT_Send_Senser((s16)gyro_X_hat_minus[0] , (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyrox_out, (s16)gyroy_out, (s16)gyroz_out, (s16)Altitude_X_hat_minus, (s16)baro_climb_rate, (s16)baro_climb_X_hat_minus, (s32)MS5611_Altitude);
+                ANO_DT_Send_Senser((s16)gyro_X_hat_minus[0] , (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyro_out[0], (s16)gyro_out[1], (s16)gyro_out[2], (s16)Altitude_X_hat_minus, (s16)baro_climb_rate, (s16)baro_climb_X_hat_minus, (s32)MS5611_Altitude);
 
             }
             else if(USART2_Open && !Flash_write_Open && !Flash_read_Open)
@@ -846,26 +884,71 @@ int main(void)
                 case 1://record cybernation data
                     if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
                     {
-                        datatemp[0 + i5 * 14] = (s16)angle_roll_out & 0x00ff; //little endian
-                        datatemp[1 + i5 * 14] = (s16)angle_roll_out >> 8;
-                        datatemp[2 + i5 * 14] = (s16)angle_pitch_out & 0x00ff;
-                        datatemp[3 + i5 * 14] = (s16)angle_pitch_out >> 8;
-                        datatemp[4 + i5 * 14] = (s16)angle_yaw_out & 0x00ff;
-                        datatemp[5 + i5 * 14] = (s16)angle_yaw_out >> 8;
-                        datatemp[6 + i5 * 14] = gyrox_out & 0x00ff;
-                        datatemp[7 + i5 * 14] = gyrox_out >> 8;
-                        datatemp[8 + i5 * 14] = gyroy_out & 0x00ff;
-                        datatemp[9 + i5 * 14] = gyroy_out >> 8;
-                        datatemp[10 + i5 * 14] = gyroz_out & 0x00ff;
-                        datatemp[11 + i5 * 14] = gyroz_out >> 8;
-                        datatemp[12 + i5 * 14] = (s16)baro_climb_rate & 0x00ff;
-                        datatemp[13 + i5 * 14] = (s16)baro_climb_rate >> 8;
+                        datatemp2[0 + i5 * 14] = (s16)angle_roll_out & 0x00ff; //little endian
+                        datatemp2[1 + i5 * 14] = (s16)angle_roll_out >> 8;
+                        datatemp2[2 + i5 * 14] = (s16)angle_pitch_out & 0x00ff;
+                        datatemp2[3 + i5 * 14] = (s16)angle_pitch_out >> 8;
+                        datatemp2[4 + i5 * 14] = (s16)angle_yaw_out & 0x00ff;
+                        datatemp2[5 + i5 * 14] = (s16)angle_yaw_out >> 8;
+                        datatemp2[6 + i5 * 14] = gyro_out[0] & 0x00ff;
+                        datatemp2[7 + i5 * 14] = gyro_out[0] >> 8;
+                        datatemp2[8 + i5 * 14] = gyro_out[1] & 0x00ff;
+                        datatemp2[9 + i5 * 14] = gyro_out[1] >> 8;
+                        datatemp2[10 + i5 * 14] = gyro_out[2] & 0x00ff;
+                        datatemp2[11 + i5 * 14] = gyro_out[2] >> 8;
+                        datatemp2[12 + i5 * 14] = (s16)baro_climb_rate & 0x00ff;
+                        datatemp2[13 + i5 * 14] = (s16)baro_climb_rate >> 8;
 
                         i3++;
                         i5++;
                         if(i5 == 18) //we have collected 18 group data
                         {
-                            SPI_Flash_Write2(datatemp, 0 + i4 * 252, 252);//over 1ms
+                            SPI_Flash_Write2(datatemp2, 0 + i4 * 252, 252);//over 1ms
+                            i4++;
+                            i5 = 0;
+                        }
+                    }
+                    break;
+                case 2:
+                    if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
+                    {
+                        datatemp3[0 + i5 * 26] = (s16)gyro_X_hat_minus[0] & 0x00ff; //little endian
+                        datatemp3[1 + i5 * 26] = (s16)gyro_X_hat_minus[0] >> 8;
+                        datatemp3[2 + i5 * 26] = (s16)gyro_X_hat_minus[1] & 0x00ff;
+                        datatemp3[3 + i5 * 26] = (s16)gyro_X_hat_minus[1] >> 8;
+                        datatemp3[4 + i5 * 26] = (s16)gyro_X_hat_minus[2] & 0x00ff;
+                        datatemp3[5 + i5 * 26] = (s16)gyro_X_hat_minus[2] >> 8;
+
+                        datatemp3[6 + i5 * 26] = gyro_out[0] & 0x00ff;
+                        datatemp3[7 + i5 * 26] = gyro_out[0] >> 8;
+                        datatemp3[8 + i5 * 26] = gyro_out[1] & 0x00ff;
+                        datatemp3[9 + i5 * 26] = gyro_out[1] >> 8;
+                        datatemp3[10 + i5 * 26] = gyro_out[2] & 0x00ff;
+                        datatemp3[11 + i5 * 26] = gyro_out[2] >> 8;
+
+                        datatemp3[12 + i5 * 26] = (s16)desroll & 0x00ff;
+                        datatemp3[13 + i5 * 26] = (s16)desroll >> 8;
+                        datatemp3[14 + i5 * 26] = (s16)despitch & 0x00ff;
+                        datatemp3[15 + i5 * 26] = (s16)despitch >> 8;
+                        datatemp3[16 + i5 * 26] = (s16)desyaw & 0x00ff;
+                        datatemp3[17 + i5 * 26] = (s16)desyaw >> 8;
+
+                        datatemp3[18 + i5 * 26] = (s16) angle_roll_out & 0x00ff;
+                        datatemp3[19 + i5 * 26] = (s16) angle_roll_out >> 8;
+                        datatemp3[20 + i5 * 26] = (s16) angle_pitch_out & 0x00ff;
+                        datatemp3[21 + i5 * 26] = (s16) angle_pitch_out >> 8;
+                        datatemp3[22 + i5 * 26] = (s16) angle_yaw_out   & 0x00ff;
+                        datatemp3[23 + i5 * 26] = (s16) angle_yaw_out   >> 8;
+
+                        datatemp3[24 + i5 * 26] = (s16)baro_climb_rate & 0x00ff;
+                        datatemp3[25 + i5 * 26] = (s16) baro_climb_rate  >> 8;
+						
+						i3++;
+                        i5++;
+						
+                        if(i5 == 9) //we have collected 9 group data
+                        {
+                            SPI_Flash_Write2(datatemp3, 0 + i4 * 234, 234);//over 1ms
                             i4++;
                             i5 = 0;
                         }

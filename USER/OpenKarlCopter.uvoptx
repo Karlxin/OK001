@@ -169,6 +169,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
+          <Name></Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -287,6 +288,16 @@
           <count>17</count>
           <WinNumber>1</WinNumber>
           <ItemText>jiesuokeyi</ItemText>
+        </Ww>
+        <Ww>
+          <count>18</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>Flash_read_Open</ItemText>
+        </Ww>
+        <Ww>
+          <count>19</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>datatemp3</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>

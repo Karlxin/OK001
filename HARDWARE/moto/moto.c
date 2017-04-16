@@ -64,7 +64,7 @@ float kp_acc_z = 0.5 * 0.05978;
 extern float roll_err, pitch_err, yaw_err;
 extern float desroll, despitch, desyaw;
 
-extern short gyrox_out, gyroy_out, gyroz_out;
+extern short gyro_out[3];
 extern short aacx, aacy, aacz;
 extern short accz_out;
 
@@ -90,6 +90,8 @@ extern short aacz_chushi;
 
 extern float MS5611_Altitude;
 extern float Altitude_out;
+
+extern short gyro_cybernation[3];
 
 //just constrain from right
 int16_t Constrain_up(int16_t throttle, int16_t max)
@@ -161,10 +163,10 @@ void cyberNation_theta(void)
 
 void cyberNation_omega(void)
 {
-    cNd1_omega = +gyrox_out * kp_omega_x + gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
-    cNd2_omega = -gyrox_out * kp_omega_x - gyroy_out * kp_omega_y + gyroz_out * kp_omega_z;
-    cNd3_omega = -gyrox_out * kp_omega_x + gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
-    cNd4_omega = +gyrox_out * kp_omega_x - gyroy_out * kp_omega_y - gyroz_out * kp_omega_z;
+    cNd1_omega = +gyro_cybernation[0] * kp_omega_x + gyro_cybernation[1] * kp_omega_y + gyro_cybernation[2] * kp_omega_z;
+    cNd2_omega = -gyro_cybernation[0] * kp_omega_x - gyro_cybernation[1] * kp_omega_y + gyro_cybernation[2] * kp_omega_z;
+    cNd3_omega = -gyro_cybernation[0] * kp_omega_x + gyro_cybernation[1] * kp_omega_y - gyro_cybernation[2] * kp_omega_z;
+    cNd4_omega = +gyro_cybernation[0] * kp_omega_x - gyro_cybernation[1] * kp_omega_y - gyro_cybernation[2] * kp_omega_z;
 }
 
 void cyberNation_alpha(void)
@@ -194,9 +196,9 @@ void Gyro_filter(void)
         Filter_sum_z += Filter_z[i];
     }
 
-    gyrox_out = Filter_sum_x / Filter_Num;
-    gyroy_out = Filter_sum_y / Filter_Num;
-    gyroz_out = Filter_sum_z / Filter_Num;
+    gyro_out[0] = Filter_sum_x / Filter_Num;
+    gyro_out[1] = Filter_sum_y / Filter_Num;
+    gyro_out[2] = Filter_sum_z / Filter_Num;
 
     Filter_count++;
 
@@ -364,6 +366,7 @@ void Altitude_hold_update(void)
     {
         Ahd = 0;
     }
+	Ahd=0;//we temporarily disuse this
 }
 
 //degree to radian by multiplier 0.0174533
@@ -383,7 +386,7 @@ void Kalman_filter_gyro(void)
 
         //predict update
         gyro_K[i] = gyro_P[i] / (gyro_P[i] + gyro_R[i]);
-        gyro_X_hat[i] = gyro_X_hat_minus[i] + gyro_K[i] * (gyro[i] - gyro_chushi[i] - gyro_X_hat_minus[i]);
+        gyro_X_hat[i] = gyro_X_hat_minus[i] + gyro_K[i] * (gyro_out[i]- gyro_X_hat_minus[i]);
         gyro_P[i] = (1 - gyro_K[i]) * gyro_P[i];
     }
 }
