@@ -16,7 +16,8 @@
 		4.tilt to the right.video:20170416_150635.mp4
 		5.kalman in gyro works,Q about 25 but not perfect.video:20170416_153929.mp4
 		6.kalman gyro Q,10,9,11,not good.video:20170416_155506.mp4
-		7.nothing happen.Video:20170416_183022.mp4
+		7.nothing happen.Video:20170416_183022.mp4	
+		8.adding alpha cybernation.video:20170416_191744.mp4
 7.solutions: 
 
 8.exception:

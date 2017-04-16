@@ -290,11 +290,12 @@ extern float gyro_samples_time_stamps[7];
 
 extern float alpha[3];
 
+//degree per sencond*second by multiplier 1/32767*2000=0.0610370 we put this in p
 void Derivative_Filter_alpha(void)
 {
-    alpha[0] = (10.0f * (f_gx(1) - f_gx(-1)) / (x_g(1) - x_g(-1)) + 16.0f * (f_gx(2) - f_gx(-2)) / (x_g(2) - x_g(-2)) + 6.0f * (f_gx(3) - f_gx(-3)) / (x_g(3) - x_g(-3))) * 0.03125f;
+    alpha[0] = (10.0f * (f_gx(1) - f_gx(-1)) / (x_g(1) - x_g(-1)) + 16.0f * (f_gx(2) - f_gx(-2)) / (x_g(2) - x_g(-2)) + 6.0f * (f_gx(3) - f_gx(-3)) / (x_g(3) - x_g(-3))) * 0.0003125f;
 
-	alpha[1] = (10.0f * (f_gy(1) - f_gy(-1)) / (x_g(1) - x_g(-1)) + 16.0f * (f_gy(2) - f_gy(-2)) / (x_g(2) - x_g(-2)) + 6.0f * (f_gy(3) - f_gy(-3)) / (x_g(3) - x_g(-3))) * 0.03125f;
+	alpha[1] = (10.0f * (f_gy(1) - f_gy(-1)) / (x_g(1) - x_g(-1)) + 16.0f * (f_gy(2) - f_gy(-2)) / (x_g(2) - x_g(-2)) + 6.0f * (f_gy(3) - f_gy(-3)) / (x_g(3) - x_g(-3))) * 0.0003125f;
 }
 
 

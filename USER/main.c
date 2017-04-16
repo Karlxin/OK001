@@ -831,7 +831,7 @@ int main(void)
 
             if(channel3_in > 1100 && jiesuokeyi) //only when channel3 >1100 and jiesuokeyi will update motor controlling
             {
-                //cyberNation_alpha();//noise is too big
+                cyberNation_alpha();//noise is too big
                 cyberNation_omega();
                 cyberNation_theta();
                 Sink_compensation();//sink offset superposition

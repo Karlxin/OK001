@@ -47,8 +47,8 @@ float KP_THETA_X = 2.6, KP_THETA_Y = 2.6, KP_THETA_Z = 2.6;//常量
 float kp_theta_x = 2.6, kp_theta_y = 2.6, kp_theta_z = 2.6;//变量
 float KP_OMEGA_X = 0.52 * 0.0610370, KP_OMEGA_Y = 0.52 * 0.0610370, KP_OMEGA_Z = 0.6 * 0.0610370; //常量
 float kp_omega_x = 0.52 * 0.0610370, kp_omega_y = 0.52 * 0.0610370, kp_omega_z = 0.6 * 0.0610370; //变量
-float KP_ALPHA_X = 0.03, KP_ALPHA_Y = 0.03, KP_ALPHA_Z = 0;
-float kp_alpha_x = 0.03, kp_alpha_y = 0.03, kp_alpha_z = 0;
+float KP_ALPHA_X = 0.03* 0.0610370, KP_ALPHA_Y = 0.03* 0.0610370, KP_ALPHA_Z = 0;
+float kp_alpha_x = 0.03* 0.0610370, kp_alpha_y = 0.03* 0.0610370, kp_alpha_z = 0;
 //6*130=780;
 //0.5*1000=500;
 //consideration of mass of 1837g for MATLAB theory
@@ -142,10 +142,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
 
-    d1 = Constrain_up(desthrottle, 1500) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //              CW3     1CCW	     / \				 
-    d2 = Constrain_up(desthrottle, 1500) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //  planform        * *           / | \ X轴      	     Y轴
-    d3 = Constrain_up(desthrottle, 1500) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1500) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //      	      CCW2    4CW         |
+    d1 = Constrain_up(desthrottle, 1500) + Constrain(cNd1_alpha, 15, -15) + Constrain(cNd1_omega, 130, -130) + Constrain(cNd1_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) ; //              CW3     1CCW	     / \				 
+    d2 = Constrain_up(desthrottle, 1500) + Constrain(cNd2_alpha, 15, -15) + Constrain(cNd2_omega, 130, -130) + Constrain(cNd2_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) ; //  planform        * *           / | \ X轴      	     Y轴
+    d3 = Constrain_up(desthrottle, 1500) + Constrain(cNd3_alpha, 15, -15) + Constrain(cNd3_omega, 130, -130) + Constrain(cNd3_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) ; //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1500) + Constrain(cNd4_alpha, 15, -15) + Constrain(cNd4_omega, 130, -130) + Constrain(cNd4_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) ; //      	      CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }
