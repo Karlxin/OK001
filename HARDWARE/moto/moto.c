@@ -20,7 +20,7 @@ extern float ACC_IIR_FACTOR;
 
 extern int16_t d1, d2, d3, d4;
 
-extern float alphax, alphay, alphaz;
+extern float alpha[3];
 
 //roll:-180~180 pitch:-90:90 yaw:-180:180
 //omegaroll:omegapitch:omegayaw:-32768:32767
@@ -82,9 +82,7 @@ extern float gyro_P[3];
 extern short gyro[3];
 extern short gyro_chushi[3];
 
-extern float alphax_out;
-extern float alphay_out;
-extern float alphaz_out;
+extern float alpha_out[3];
 
 extern short aacz_chushi;
 
@@ -144,10 +142,10 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
 void Moto_Throttle(int16_t desthrottle)
 {
 
-    d1 = Constrain_up(desthrottle, 1500) + Constrain(cNd1_omega, 300, -300)+ Constrain(cNd1_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //              CW3     1CCW	     / \				 
-    d2 = Constrain_up(desthrottle, 1500) + Constrain(cNd2_omega, 300, -300)+ Constrain(cNd2_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //  planform        * *           / | \ X÷·      	     Y÷·
-    d3 = Constrain_up(desthrottle, 1500) + Constrain(cNd3_omega, 300, -300)+ Constrain(cNd3_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1500) + Constrain(cNd4_omega, 300, -300)+ Constrain(cNd4_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //      	      CCW2    4CW         |
+    d1 = Constrain_up(desthrottle, 1500) + Constrain(cNd1_omega, 300, -300) + Constrain(cNd1_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //              CW3     1CCW	     / \				 
+    d2 = Constrain_up(desthrottle, 1500) + Constrain(cNd2_omega, 300, -300) + Constrain(cNd2_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //  planform        * *           / | \ X÷·      	     Y÷·
+    d3 = Constrain_up(desthrottle, 1500) + Constrain(cNd3_omega, 300, -300) + Constrain(cNd3_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //                   *              |                <=======
+    d4 = Constrain_up(desthrottle, 1500) + Constrain(cNd4_omega, 300, -300) + Constrain(cNd4_theta, 50, -50)   + Constrain((int16_t)Scd, 15, -15) + Constrain((int16_t)Ahd, 10, -10) ; //      	      CCW2    4CW         |
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
 }
@@ -171,10 +169,10 @@ void cyberNation_omega(void)
 
 void cyberNation_alpha(void)
 {
-    cNd1_alpha = +(-cNd1_omega + cNd2_omega + cNd3_omega - cNd4_omega - cNd1_theta + cNd2_theta + cNd3_theta - cNd4_theta) * kp_alpha_x + (-cNd1_omega + cNd2_omega - cNd3_omega + cNd4_omega - cNd1_theta + cNd2_theta - cNd3_theta + cNd4_theta) * kp_alpha_y;
-    cNd2_alpha = -(-cNd1_omega + cNd2_omega + cNd3_omega - cNd4_omega - cNd1_theta + cNd2_theta + cNd3_theta - cNd4_theta) * kp_alpha_x - (-cNd1_omega + cNd2_omega - cNd3_omega + cNd4_omega - cNd1_theta + cNd2_theta - cNd3_theta + cNd4_theta) * kp_alpha_y;
-    cNd3_alpha = -(-cNd1_omega + cNd2_omega + cNd3_omega - cNd4_omega - cNd1_theta + cNd2_theta + cNd3_theta - cNd4_theta) * kp_alpha_x + (-cNd1_omega + cNd2_omega - cNd3_omega + cNd4_omega - cNd1_theta + cNd2_theta - cNd3_theta + cNd4_theta) * kp_alpha_y;
-    cNd4_alpha = +(-cNd1_omega + cNd2_omega + cNd3_omega - cNd4_omega - cNd1_theta + cNd2_theta + cNd3_theta - cNd4_theta) * kp_alpha_x - (-cNd1_omega + cNd2_omega - cNd3_omega + cNd4_omega - cNd1_theta + cNd2_theta - cNd3_theta + cNd4_theta) * kp_alpha_y;
+    cNd1_alpha = +alpha_out[0] * kp_alpha_x + alpha_out[1] * kp_alpha_y;
+    cNd2_alpha = -alpha_out[0] * kp_alpha_x - alpha_out[1] * kp_alpha_y;
+    cNd3_alpha = -alpha_out[0] * kp_alpha_x + alpha_out[1] * kp_alpha_y;
+    cNd4_alpha = +alpha_out[0] * kp_alpha_x - alpha_out[1] * kp_alpha_y;
 }
 
 #define Filter_Num 6//sliding window with 6 values
@@ -233,7 +231,7 @@ void Accz_filter(void)
     }
 }
 
-extern float angle_roll_out,angle_pitch_out,angle_yaw_out;
+extern float angle_roll_out, angle_pitch_out, angle_yaw_out;
 
 
 #define Filter_Num3 4//sliding window with 6 values
@@ -357,16 +355,16 @@ extern float baro_climb_rate;
 
 void Altitude_hold_update(void)
 {
-	if(stopping_throttle_both_recorded&&_fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1&&stopping_throttle_lower_bound_fine<channel3_in&&channel3_in<stopping_throttle_upper_bound_fine)
-	{
-		Ahd = -kp_vel_z * baro_climb_rate;//- kp_acc_z * (accz_X_hat_minus - aacz_chushi);
-		//Ahd=0;//we do not use it temporarily
-	}
+    if(stopping_throttle_both_recorded && _fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1 && stopping_throttle_lower_bound_fine < channel3_in && channel3_in < stopping_throttle_upper_bound_fine)
+    {
+        Ahd = -kp_vel_z * baro_climb_rate;//- kp_acc_z * (accz_X_hat_minus - aacz_chushi);
+        //Ahd=0;//we do not use it temporarily
+    }
     else
     {
         Ahd = 0;
     }
-	Ahd=0;//we temporarily disuse this
+    Ahd = 0; //we temporarily disuse this
 }
 
 //degree to radian by multiplier 0.0174533
@@ -386,7 +384,7 @@ void Kalman_filter_gyro(void)
 
         //predict update
         gyro_K[i] = gyro_P[i] / (gyro_P[i] + gyro_R[i]);
-        gyro_X_hat[i] = gyro_X_hat_minus[i] + gyro_K[i] * (gyro_out[i]- gyro_X_hat_minus[i]);
+        gyro_X_hat[i] = gyro_X_hat_minus[i] + gyro_K[i] * (gyro_out[i] - gyro_X_hat_minus[i]);
         gyro_P[i] = (1 - gyro_K[i]) * gyro_P[i];
     }
 }

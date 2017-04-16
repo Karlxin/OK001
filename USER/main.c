@@ -286,26 +286,32 @@ u32 debug[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //time pin,to observe the real f
 
 int16_t d1 = 0, d2 = 0, d3 = 0, d4 = 0;
 
-float alphax = 0, alphay = 0, alphaz = 0;
+float alpha[3];
+float alpha_out[3];
 
 extern void cyberNation_theta(void);
 extern void cyberNation_omega(void);
 extern void cyberNation_alpha(void);
 
-float alphax_out = 0;
-float alphay_out = 0;
-float alphaz_out = 0;
+
 
 extern void Altitude_filter(void);
-
 extern void Filter_Altitude(void);
 
 float Altitude_samples[7] = {0, 0, 0, 0, 0, 0, 0};
 float Altitude_samples_time_stamps[7] = {0, 0, 0, 0, 0, 0, 0};
 u8 Altitude_sample_index = 0;
 u8 Altitude_samples_full = 0;
+extern void Derivative_Filter_baro_climb_rate(void);
 
-extern void Derivative_Filter(void);
+float gyrox_samples[7] = {0, 0, 0, 0, 0, 0, 0};
+float gyroy_samples[7] = {0, 0, 0, 0, 0, 0, 0};
+float gyroz_samples[7] = {0, 0, 0, 0, 0, 0, 0};
+float gyro_samples_time_stamps[7] = {0, 0, 0, 0, 0, 0, 0};
+u8 gyro_sample_index = 0;
+u8 gyro_samples_full = 0;
+extern void Derivative_Filter_alpha(void);
+
 
 u32 complementary_count = 1;
 
@@ -351,6 +357,7 @@ int main(void)
     u8 flymode = 0;
     int16_t temp1, temp2,  desthrottle, temp4; //to convert channel pulse width modulation wave to expectation angle
     u8 i;//for for loop
+	
     u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
     u8 kalman_gyro_Open = 1; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
@@ -362,7 +369,7 @@ int main(void)
     u32 i5 = 0; //for write flash
     //0 to record raw grro acc xyz,1 to record the cybernation quantities
     //2 to record the 1 and expectation roll pitch yaw and kalman gyro
-    u8 record_option = 2;
+    u8 record_option = 3;
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0£¬1£¬2£¬3£»subclass by 0,1(2:0),over 0.0004ms
@@ -511,9 +518,30 @@ int main(void)
                 {
                     Kalman_filter_gyro();
                 }
-				gyro_cybernation[0]=gyro_X_hat_minus[0];
-				gyro_cybernation[1]=gyro_X_hat_minus[1];
-				gyro_cybernation[2]=gyro_X_hat_minus[2];
+                gyro_cybernation[0] = gyro_X_hat_minus[0];
+                gyro_cybernation[1] = gyro_X_hat_minus[1];
+                gyro_cybernation[2] = gyro_X_hat_minus[2];
+
+                //alpha top
+                gyrox_samples[gyro_sample_index] = gyro_X_hat_minus[0];
+                gyroy_samples[gyro_sample_index] = gyro_X_hat_minus[1];
+                gyro_samples_time_stamps[gyro_sample_index] = xitongshijian * 0.0001f;
+                gyro_sample_index++;
+                if(gyro_sample_index == 7)
+                {
+                    gyro_sample_index = 0;
+                    if(!gyro_samples_full)
+                    {
+                        gyro_samples_full = 1;
+                    }
+                }
+                if(gyro_samples_full)
+                {
+                    Derivative_Filter_alpha();
+                    alpha_out[0] = alpha[0];
+                    alpha_out[1] = alpha[1];
+                }
+                //alpha bottom
             }
             //read MPU bottom
 
@@ -596,17 +624,31 @@ int main(void)
                         kgxyz_ogxyz_drpy_orpy_bcr[10] = ((u16)datatemp3[21] << 8) | ((u16)datatemp3[20]);
                         kgxyz_ogxyz_drpy_orpy_bcr[11] = ((u16)datatemp3[23] << 8) | ((u16)datatemp3[22]);
                         kgxyz_ogxyz_drpy_orpy_bcr[12] = ((u16)datatemp3[25] << 8) | ((u16)datatemp3[24]);
-						
-						
-						
+
+
+
                         ANO_DT_Send_Senser(kgxyz_ogxyz_drpy_orpy_bcr[0], kgxyz_ogxyz_drpy_orpy_bcr[1], \
                                            kgxyz_ogxyz_drpy_orpy_bcr[2], kgxyz_ogxyz_drpy_orpy_bcr[3], kgxyz_ogxyz_drpy_orpy_bcr[4], \
                                            kgxyz_ogxyz_drpy_orpy_bcr[5], kgxyz_ogxyz_drpy_orpy_bcr[6], kgxyz_ogxyz_drpy_orpy_bcr[7], \
                                            kgxyz_ogxyz_drpy_orpy_bcr[8], (s32)0);
                         ANO_DT_Send_Status((float)kgxyz_ogxyz_drpy_orpy_bcr[9], (float)kgxyz_ogxyz_drpy_orpy_bcr[10], \
                                            (float)kgxyz_ogxyz_drpy_orpy_bcr[11], (s32)0, (u8)0, (u8)0); //over 0.4ms
-						//ANO_DT_Send_Status((float)kgxyz_ogxyz_drpy_orpy_bcr[12], (float)0, \
-                                           (float)0, (s32)0, (u8)0, (u8)0); //over 0.4ms
+                        //ANO_DT_Send_Status((float)kgxyz_ogxyz_drpy_orpy_bcr[12], (float)0, \
+                        (float)0, (s32)0, (u8)0, (u8)0); //over 0.4ms
+                        i2++;
+                    }
+                    break;
+                case 3:
+                    if(i2 < 699000)
+                    {
+                        SPI_Flash_Read(datatemp, 0 + i2 * 12, 12);
+                        gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
+                        gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
+                        gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
+                        gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
+                        gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
+                        gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
+                        ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
                         i2++;
                     }
                     break;
@@ -942,13 +984,39 @@ int main(void)
 
                         datatemp3[24 + i5 * 26] = (s16)baro_climb_rate & 0x00ff;
                         datatemp3[25 + i5 * 26] = (s16) baro_climb_rate  >> 8;
-						
-						i3++;
+
+                        i3++;
                         i5++;
-						
+
                         if(i5 == 9) //we have collected 9 group data
                         {
                             SPI_Flash_Write2(datatemp3, 0 + i4 * 234, 234);//over 1ms
+                            i4++;
+                            i5 = 0;
+                        }
+                    }
+                    break;
+                case 3:
+                    if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
+                    {
+                        datatemp[0 + i5 * 12] = (s16)alpha_out[0] & 0x00ff; //little endian
+                        datatemp[1 + i5 * 12] = (s16)alpha_out[0] >> 8;
+                        datatemp[2 + i5 * 12] = (s16)alpha_out[1] & 0x00ff;
+                        datatemp[3 + i5 * 12] = (s16)alpha_out[1] >> 8;
+                        datatemp[4 + i5 * 12] = (s16)alpha_out[2] & 0x00ff;
+                        datatemp[5 + i5 * 12] = (s16)alpha_out[2] >> 8;
+                        datatemp[6 + i5 * 12] = gyro[0] & 0x00ff;
+                        datatemp[7 + i5 * 12] = gyro[0] >> 8;
+                        datatemp[8 + i5 * 12] = gyro[1] & 0x00ff;
+                        datatemp[9 + i5 * 12] = gyro[1] >> 8;
+                        datatemp[10 + i5 * 12] = gyro[2] & 0x00ff;
+                        datatemp[11 + i5 * 12] = gyro[2] >> 8;
+
+                        i3++;
+                        i5++;
+                        if(i5 == 20) //we have collected 20 group data
+                        {
+                            SPI_Flash_Write2(datatemp, 0 + i4 * 240, 240);//over 1ms
                             i4++;
                             i5 = 0;
                         }
@@ -979,8 +1047,8 @@ int main(void)
             {
                 Altitude_out = MS561101BA_get_altitude(MS5611_Pressure / Pressure_chushi);
                 Kalman_filter_alt();
+
                 Altitude_samples[Altitude_sample_index] = Altitude_X_hat_minus;
-                //Altitude_samples[Altitude_sample_index] = MS5611_Altitude;
                 Altitude_samples_time_stamps[Altitude_sample_index] = xitongshijian * 0.0001f;
                 Altitude_sample_index++;
                 if(Altitude_sample_index == 7)
@@ -993,19 +1061,8 @@ int main(void)
                 }
                 if(Altitude_samples_full)
                 {
-                    Derivative_Filter();
+                    Derivative_Filter_baro_climb_rate();
                     Kalman_filter_baro_climb();
-                    /*
-                    if(stopping_throttle_upper_bound_fine < channel3_in || channel3_in < stopping_throttle_lower_bound_fine )
-                    {
-                        complementary_count++;
-                    }
-                    else
-                    {
-                        complementation_filter();
-                        complementary_count = 1;
-                    }
-                    */
                 }
             }
         }

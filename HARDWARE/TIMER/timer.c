@@ -110,7 +110,7 @@ extern float pressure_X_hat_minus;
 extern float pressure_X_hat;
 extern float Altitude_X_hat;
 extern float Altitude_X_hat_minus;
-extern void Derivative_Filter(void);
+extern void Derivative_Filter_baro_climb_rate(void);
 extern float Altitude_samples[7];
 extern u8 Altitude_sample_index;
 extern float Altitude_samples_time_stamps[7];

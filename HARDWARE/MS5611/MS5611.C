@@ -270,9 +270,39 @@ extern float Altitude_samples_time_stamps[7];
 extern float baro_climb_rate;
 
 //baro_climb_rate in cm/s2
-void Derivative_Filter(void)
+void Derivative_Filter_baro_climb_rate(void)
 {
     baro_climb_rate = (10.0f * (f(1) - f(-1)) / (x(1) - x(-1)) + 16.0f * (f(2) - f(-2)) / (x(2) - x(-2)) + 6.0f * (f(3) - f(-3)) / (x(3) - x(-3))) * 0.03125f;
 }
+
+
+extern float gyrox_samples[7];
+extern float gyroy_samples[7];
+extern float gyroz_samples[7];
+extern u8 gyro_sample_index;
+extern float gyro_samples_time_stamps[7];
+
+#define SAMPLES_RANGE2 7
+#define f_gx(i) gyrox_samples[(((i+1)+3*SAMPLES_RANGE2/2)%SAMPLES_RANGE2)]
+#define f_gy(i) gyroy_samples[(((i+1)+3*SAMPLES_RANGE2/2)%SAMPLES_RANGE2)]
+#define f_gz(i) gyroz_samples[(((i+1)+3*SAMPLES_RANGE2/2)%SAMPLES_RANGE2)]
+#define x_g(i) gyro_samples_time_stamps[(((i+1)+3*SAMPLES_RANGE2/2)%SAMPLES_RANGE2)]
+
+extern float alpha[3];
+
+void Derivative_Filter_alpha(void)
+{
+    alpha[0] = (10.0f * (f_gx(1) - f_gx(-1)) / (x_g(1) - x_g(-1)) + 16.0f * (f_gx(2) - f_gx(-2)) / (x_g(2) - x_g(-2)) + 6.0f * (f_gx(3) - f_gx(-3)) / (x_g(3) - x_g(-3))) * 0.03125f;
+
+	alpha[1] = (10.0f * (f_gy(1) - f_gy(-1)) / (x_g(1) - x_g(-1)) + 16.0f * (f_gy(2) - f_gy(-2)) / (x_g(2) - x_g(-2)) + 6.0f * (f_gy(3) - f_gy(-3)) / (x_g(3) - x_g(-3))) * 0.03125f;
+}
+
+
+
+
+
+
+
+
 
 
