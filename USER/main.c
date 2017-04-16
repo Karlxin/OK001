@@ -43,8 +43,8 @@ EL PSY CONGROO
 #include "inv_mpu_dmp_motion_driver.h"//mpu hardware config and reading config head file
 #include "math.h"//math head file
 #include <stdio.h>//standard input output with buffer
-#include "spi.h"
-#include "flash.h"
+#include "spi.h"//serial peripheral interface
+#include "flash.h"//electrically erasable programmable read only memory 
 
 extern void TIM3_PWM_Init(u16 arr, u16 psc);
 extern void TIM4_Cap_Init(u16 arr, u16 psc);
@@ -143,36 +143,33 @@ extern void Altitude_hold_update(void);
 int64_t OFF_;
 
 /*
-C1 压力灵敏度 SENS|T1
-C2  压力补偿  OFF|T1
-C3  温度压力灵敏度系数 TCS
-C4  温度系数的压力补偿 TCO
-C5  参考温度 T|REF
-C6  温度系数的温度 TEMPSENS
+C1  Pressure Sensitivity |SENS_T1
+C2  Pressure Offset |OFF_T1
+C3  Temperature coefficient of pressure sensitivity |TCS
+C4  Temperature coefficient of pressure offset |TCO
+C5  Reference temperature |T_REF
+C6  Temperature coefficient of the temperature |TEMPSENS
 */
-uint16_t  Cal_C[7];//用于存放PROM中的6组数据1-6
-uint32_t D1_Pres, D2_Temp;//数字压力值,数字温度值
+uint16_t  Cal_C[7];//for depositing [C7:C1]
+uint32_t D1_Pres, D2_Temp;//digital pressure value,digital temperature value
 
 /*
-dT 实际和参考温度之间的差异
-TEMP 实际温度
+dT difference between actual and reference temperature
+TEMP actual temperature (-40:+85 with resolution 0.01 degree Celsius)
 */
 int32_t dT, TEMP;
 /*
-OFF 实际温度补偿
-SENS 实际温度灵敏度
+OFF offset at actual temperature
+SENS sensitivity at actual temperature
 */
 int64_t OFF, SENS;
 
-int32_t P;//单位0.01mbar
+int32_t P;//temperature compensated pressure (10:1200mbar with resolution 0.01mbar)
 
-uint32_t Pressure, Pressure_old, qqp;//大气压//单位0.01mbar
+uint32_t Pressure;//unit 0.01mbar
 
-int64_t T2, TEMP2;//温度校验值
+int64_t T2, TEMP2;
 int64_t OFF2, SENS2;
-
-uint32_t Pres_BUFFER[20];//数据组
-uint32_t Temp_BUFFER[10];//数据组
 
 //-----------barometer bottom
 
@@ -330,10 +327,10 @@ extern void Angle_filter(void);
 //spi flash data top
 u8 datatemp[240];//to write a page in w25q64.
 u32 FLASH_SIZE = 8 * 1024 * 1024; //FLASH size of 8M Byte
-
 uint16_t gaxyz[6] = {0, 0, 0, 0, 0, 0}; //gryo xyz acc xyz data temp
-#define SIZE_gaxyz sizeof(gaxyz)
-int16_t datatemp2[SIZE_gaxyz];//to send to serial
+
+u8 datatemp2[252];//to write a page in w25q61.recording the cybernation quantities
+uint16_t rpygxyzbc[7]={0,0,0,0,0,0,0};//roll pitch yaw gyro_out x y z baro climb rate
 //spi flash data bottom
 
 
@@ -357,6 +354,8 @@ int main(void)
     u32 i3 = 0; //for write flash
     u32 i4 = 0; //for write flash
     u32 i5 = 0; //for write flash
+    //0 to record raw grro acc xyz,1 to record the cybernation quantities
+    u8 record_option = 1;
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0，1，2，3；subclass by 0,1(2:0),over 0.0004ms
@@ -445,14 +444,14 @@ int main(void)
 
     delay_ms(10);
 
-    SPI_Flash_Init();  		//SPI FLASH 初始化
+    SPI_Flash_Init();  		//we must first erase the whole chip ,i.e.,set all the bit
 
     delay_ms(10);
 
 
-    while(SPI_Flash_ReadID() != W25Q64)							//检测不到W25Q64
+    while(SPI_Flash_ReadID() != W25Q64)		//W25Q64 has not been detected
     {
-        LED0 = !LED0; //DS0闪烁
+        LED0 = !LED0; //DS0 toggle
         delay_ms(500);
     }
 
@@ -537,44 +536,46 @@ int main(void)
             pitch_err = angle_pitch_out - despitch;
             yaw_err = angle_yaw_out - desyaw;
 
-            /*//------------------------------read flash fast top--------------------------------
-            if(Flash_read_Open && !jiesuokeyi) //disarmed and Open read flash,that is to read the data in 10X rate.
-            {
-                while(channel3_in > 1300)
-                {
-                        LED0 = 0;
-                        while(i2 < 699000)
-                        {
-                            SPI_Flash_Read(datatemp, 0 + i2 * 12, 12);
-                            gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
-                            gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
-                            gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
-                            gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
-                            gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
-                            gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
-                            ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
-                            i2++;
-                        }
-                        LED0 = 1;
-                }
-            }
-            //------------------------------read flash fast bottom-----------------------------*/
-
             //------------------------------read flash 200Hz top--------------------------------
             if(Flash_read_Open && !jiesuokeyi) //disarmed and Open read flash,that is to read the data in 10X rate.
             {
-                if(i2 < 699000)
+                switch(record_option)
                 {
-                    SPI_Flash_Read(datatemp, 0 + i2 * 12, 12);
-                    gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
-                    gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
-                    gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
-                    gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
-                    gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
-                    gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
-                    ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
-                    i2++;
+                case 0:
+                    if(i2 < 699000)
+                    {
+                        SPI_Flash_Read(datatemp, 0 + i2 * 12, 12);
+                        gaxyz[0] = ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
+                        gaxyz[1] = ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
+                        gaxyz[2] = ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
+                        gaxyz[3] = ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
+                        gaxyz[4] = ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
+                        gaxyz[5] = ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
+                        ANO_DT_Send_Senser(gaxyz[0], gaxyz[1], gaxyz[2], gaxyz[3], gaxyz[4], gaxyz[5], (s16)0, (s16)0, (s16)0, (s32)0);
+                        i2++;
+                    }
+                    break;
+                case 1:
+                    if(i2 < 699000)
+                    {
+                        SPI_Flash_Read(datatemp, 0 + i2 * 14, 14);
+						rpygxyzbc[0]= ((u16)datatemp[1] << 8) | ((u16)datatemp[0]);
+						rpygxyzbc[1]= ((u16)datatemp[3] << 8) | ((u16)datatemp[2]);
+						rpygxyzbc[2]= ((u16)datatemp[5] << 8) | ((u16)datatemp[4]);
+						rpygxyzbc[3]= ((u16)datatemp[7] << 8) | ((u16)datatemp[6]);
+						rpygxyzbc[4]= ((u16)datatemp[9] << 8) | ((u16)datatemp[8]);
+						rpygxyzbc[5]= ((u16)datatemp[11] << 8) | ((u16)datatemp[10]);
+						rpygxyzbc[6]=((u16)datatemp[13] << 8) | ((u16)datatemp[12]);
+						
+						ANO_DT_Send_Status((float)rpygxyzbc[0], (float)rpygxyzbc[1], (float)rpygxyzbc[2], (s32)0, (u8)0, (u8)0); //over 0.4ms
+                        ANO_DT_Send_Senser((s16)0, (s16)0, (s16)0, rpygxyzbc[3], rpygxyzbc[4], rpygxyzbc[5], rpygxyzbc[6], (s16)0, (s16)0, (s32)0);
+                        i2++;
+                    }
+                    break;
+                default:
+                    break;
                 }
+
             }
             //------------------------------read flash 200Hz bottom-----------------------------
 
@@ -814,31 +815,67 @@ int main(void)
             //write flash top
             if(jiesuokeyi) //armed ok
             {
-                if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
+                switch(record_option)
                 {
-                    datatemp[0 + i5 * 12] = aacx & 0x00ff; //little endian
-                    datatemp[1 + i5 * 12] = aacx >> 8;
-                    datatemp[2 + i5 * 12] = aacy & 0x00ff; //little endian
-                    datatemp[3 + i5 * 12] = aacy >> 8;
-                    datatemp[4 + i5 * 12] = aacz & 0x00ff; //little endian
-                    datatemp[5 + i5 * 12] = aacz >> 8;
-                    datatemp[6 + i5 * 12] = gyro[0] & 0x00ff; //little endian
-                    datatemp[7 + i5 * 12] = gyro[0] >> 8;
-                    datatemp[8 + i5 * 12] = gyro[1] & 0x00ff; //little endian
-                    datatemp[9 + i5 * 12] = gyro[1] >> 8;
-                    datatemp[10 + i5 * 12] = gyro[2] & 0x00ff; //little endian
-                    datatemp[11 + i5 * 12] = gyro[2] >> 8;
-
-                    i3++;
-                    i5++;
-                    if(i5 == 20) //we have collected 20 group data
+                case 0://record raw data
+                    if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
                     {
-                        SPI_Flash_Write2(datatemp, 0 + i4 * 240, 240);//over 1ms
-                        i4++;
-                        i5 = 0;
+                        datatemp[0 + i5 * 12] = aacx & 0x00ff; //little endian
+                        datatemp[1 + i5 * 12] = aacx >> 8;
+                        datatemp[2 + i5 * 12] = aacy & 0x00ff;
+                        datatemp[3 + i5 * 12] = aacy >> 8;
+                        datatemp[4 + i5 * 12] = aacz & 0x00ff;
+                        datatemp[5 + i5 * 12] = aacz >> 8;
+                        datatemp[6 + i5 * 12] = gyro[0] & 0x00ff;
+                        datatemp[7 + i5 * 12] = gyro[0] >> 8;
+                        datatemp[8 + i5 * 12] = gyro[1] & 0x00ff;
+                        datatemp[9 + i5 * 12] = gyro[1] >> 8;
+                        datatemp[10 + i5 * 12] = gyro[2] & 0x00ff;
+                        datatemp[11 + i5 * 12] = gyro[2] >> 8;
+
+                        i3++;
+                        i5++;
+                        if(i5 == 20) //we have collected 20 group data
+                        {
+                            SPI_Flash_Write2(datatemp, 0 + i4 * 240, 240);//over 1ms
+                            i4++;
+                            i5 = 0;
+                        }
                     }
+                    break;
+                case 1://record cybernation data
+                    if(i3 < 699000) //8MB i.e. 8*1024*1024Byte contains 699050*12Byte
+                    {
+                        datatemp[0 + i5 * 14] = (s16)angle_roll_out & 0x00ff; //little endian
+                        datatemp[1 + i5 * 14] = (s16)angle_roll_out >> 8;
+                        datatemp[2 + i5 * 14] = (s16)angle_pitch_out & 0x00ff;
+                        datatemp[3 + i5 * 14] = (s16)angle_pitch_out >> 8;
+                        datatemp[4 + i5 * 14] = (s16)angle_yaw_out & 0x00ff;
+                        datatemp[5 + i5 * 14] = (s16)angle_yaw_out >> 8;
+                        datatemp[6 + i5 * 14] = gyrox_out & 0x00ff;
+                        datatemp[7 + i5 * 14] = gyrox_out >> 8;
+                        datatemp[8 + i5 * 14] = gyroy_out & 0x00ff;
+                        datatemp[9 + i5 * 14] = gyroy_out >> 8;
+                        datatemp[10 + i5 * 14] = gyroz_out & 0x00ff;
+                        datatemp[11 + i5 * 14] = gyroz_out >> 8;
+                        datatemp[12 + i5 * 14] = (s16)baro_climb_rate & 0x00ff;
+                        datatemp[13 + i5 * 14] = (s16)baro_climb_rate >> 8;
+
+                        i3++;
+                        i5++;
+                        if(i5 == 18) //we have collected 18 group data
+                        {
+                            SPI_Flash_Write2(datatemp, 0 + i4 * 252, 252);//over 1ms
+                            i4++;
+                            i5 = 0;
+                        }
+                    }
+                    break;
+                default:
+                    break;
                 }
             }
+
             //write flash bottom
         }
         //fifty ms bottom

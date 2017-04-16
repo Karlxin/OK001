@@ -1,45 +1,30 @@
 #include "MS5611.h"
 #include "math.h"
 
-//气压计状态机
-#define SCTemperature    0x01	  //开始温度转换
-#define CTemperatureing  0x02 //正在转换温度
-#define SCPressure  		 0x03	    //开始气压转换
-#define SCPressureing    0x04	  //正在转换气压
+//status for MS5611
+#define SCTemperature    0x01	  //starting conversion of temperature
+#define CTemperatureing  0x02 //converting of temperature
+#define SCPressure  		 0x03	    //starting conversion of pressure
+#define SCPressureing    0x04	  //converting of temperature
 
 extern int64_t OFF_;
 extern float MS5611_Pressure;
 
-/*
-C1 压力灵敏度 SENS|T1
-C2  压力补偿  OFF|T1
-C3	温度压力灵敏度系数 TCS
-C4	温度系数的压力补偿 TCO
-C5	参考温度 T|REF
-C6 	温度系数的温度 TEMPSENS
-*/
-extern uint16_t  Cal_C[7];	        //用于存放PROM中的6组数据1-6
+extern uint16_t  Cal_C[7];	        
 
-extern uint32_t D1_Pres, D2_Temp;	// 数字压力值,数字温度值
+extern uint32_t D1_Pres, D2_Temp;	
 
-/*
-dT 实际和参考温度之间的差异
-TEMP 实际温度
-*/
+
 extern int32_t dT, TEMP;
-/*
-OFF 实际温度补偿
-SENS 实际温度灵敏度
-*/
+
 extern int64_t OFF, SENS;
 
-extern int32_t P;//单位0.01mbar
+extern int32_t P;
 
-extern int64_t T2, TEMP2;	//温度校验值
+extern int64_t T2, TEMP2;	
 extern int64_t OFF2, SENS2;
 
-extern uint32_t Pres_BUFFER[20];     //数据组
-extern uint32_t Temp_BUFFER[10];     //数据组
+
 
 extern float scaling;
 extern float temp_jisuan ;
@@ -48,7 +33,7 @@ extern float MS5611_Altitude;
 
 /*******************************************************************************
   * @函数名称	MS561101BA_RESET
-  * @函数说明   复位MS5611
+  * @函数说明   reset MS5611
   * @输入参数   无
   * @输出参数   无
   * @返回参数   无

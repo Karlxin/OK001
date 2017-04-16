@@ -2,16 +2,15 @@
 	
 2.realizing:	1.adding black box for gaxyz 
 
-3.problem:	1.accelerometer is not good for calculate climb rate
-		2.the record when baro>5 does not work
-		3.it roll wobble by cycle.
+3.problem:	
 
-4.reason:	1.51 percent by the noise,we reduce the roll wobble by decreasing the P of omega many times 
+4.reason:	 
 
-5.todo:		1.altitude hold
+5.todo:		1.optimization
 		
 		
-6.phenomenon:	
+6.phenomenon:	1.not perfect.video:20170416_095907.mp4
+		2.rpy2.6 omega 0.52,omega z 0.6.video:20170416_113423.mp4
 
 7.solutions: 
 
