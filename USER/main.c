@@ -3,7 +3,7 @@ Started at 2016
 Created by Karlxin(410824290@qq.com)
 Github:https://github.com/Karlxin/OK001.git
 OpenKarlCopter
-Version:dev_004
+Version:dev_005
 
 features:To be continued...
 
@@ -46,20 +46,21 @@ EL PSY CONGROO
 #include "spi.h"//serial peripheral interface
 #include "flash.h"//electrically erasable programmable read only memory 
 
-extern void TIM3_PWM_Init(u16 arr, u16 psc);
-extern void TIM4_Cap_Init(u16 arr, u16 psc);
-extern void TIM5_Int_Init(u16 arr, u16 psc);
-extern void Moto_Throttle(int16_t desthrottle);
-extern void MS5611_init(void);
-extern void IIC_Init(void);
-extern void MS561101BA_RESET(void);
+extern void TIM3_PWM_Init(u16 arr, u16 psc);//initialize TIM3 for four channel PWM output
+extern void TIM4_Cap_Init(u16 arr, u16 psc);//initialize TIM4 for four channel PWM input
+extern void TIM5_Int_Init(u16 arr, u16 psc);//initialize TIM5 for system time record
+extern void Moto_Throttle(int16_t desthrottle);//last but one function to call the motor output function
+extern void MS5611_init(void);//initialize the barometer for altitude and climb rate
+extern void IIC_Init(void);//barometer Inter Integrated Circuit communication protocol initialization
+extern void MS561101BA_RESET(void);//reset MS5611
 
-extern void ANO_DT_Send_MotoPWM(u16 m_1, u16 m_2, u16 m_3, u16 m_4, u16 m_5, u16 m_6, u16 m_7, u16 m_8);
-extern void ANO_DT_Send_Senser(s16 a_x, s16 a_y, s16 a_z, s16 g_x, s16 g_y, s16 g_z, s16 m_x, s16 m_y, s16 m_z, s32 bar);
-extern void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw, s32 alt, u8 fly_model, u8 armed);
+extern void ANO_DT_Send_MotoPWM(u16 m_1, u16 m_2, u16 m_3, u16 m_4, u16 m_5, u16 m_6, u16 m_7, u16 m_8);//send motor PWM to master
+extern void ANO_DT_Send_Senser(s16 a_x, s16 a_y, s16 a_z, s16 g_x, s16 g_y, s16 g_z, s16 m_x, s16 m_y, s16 m_z, s32 bar);//send sensor raw to master
+extern void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw, s32 alt, u8 fly_model, u8 armed);//send status to master
+extern void ANO_DT_Send_RCData(u16 thr, u16 yaw, u16 rol, u16 pit, u16 aux1, u16 aux2, u16 aux3, u16 aux4, u16 aux5, u16 aux6);//send Remote Controller data to master
 
-extern u8 MPU_Init(void);
-extern u8 mpu_dmp_init(void);
+extern u8 MPU_Init(void);//initialize acclerometer and gyrometer
+extern u8 mpu_dmp_init(void);//initialize hardware digital motion process 
 
 u32 xitongshijian = 0; //system timer,resolution of 0.1ms,119hour
 u32 haomiao = 0; //millisecond resolution
@@ -82,66 +83,61 @@ u32 wubaimiaozhong = 0;
 u32 yiqianmiaozhong = 0;
 
 u32 channel1_in, channel2_in, channel3_in, channel4_in;//between 1000~2000
-u32 STOPPING_THROTTLE = 1400;
+u32 STOPPING_THROTTLE = 1400;//guess for hover throttle
 
 float roll, pitch, yaw;//Tait-Bryan angles ¦Õ¦È¦×,DMP hardware resolving ,roll,pitch,yaw
 short aacx, aacy, aacz;//accelerometer raw data
 short gyrox, gyroy, gyroz;//gyrometer raw data
-short gyro[3] = {0, 0, 0};
+short gyro[3] = {0, 0, 0};//deposit for gyro_x,gyro_y,gyro_z
 short temp;//temperature
 short gyrox_chushi, gyroy_chushi, gyroz_chushi; //at the beginning we grab some data from gyrometer as the sensor zero offset
-short gyro_chushi[3] = {0, 0, 0};
-float temp_gyxc = 0, temp_gyyc = 0, temp_gyzc = 0; //the temp for gyrometer offset,use average filter
-short aacx_chushi, aacy_chushi, aacz_chushi;
-float temp_axc = 0, temp_ayc = 0, temp_azc = 0;
+short gyro_chushi[3] = {0, 0, 0};//for convenience,deposit for gyrox_chushi, gyroy_chushi, gyroz_chushi
+float temp_gyxc = 0, temp_gyyc = 0, temp_gyzc = 0; //the temporal for gyrometer offset,use average filter
+short aacx_chushi, aacy_chushi, aacz_chushi;//accelerometer initial value
+float temp_axc = 0, temp_ayc = 0, temp_azc = 0;//the temporal for accelerometer offset,use average filter
 
-float angle_roll, angle_pitch, angle_yaw;
-float angle_roll_out, angle_pitch_out, angle_yaw_out;
-
-u32 gyro_temp_time = 0;
-float gyro_temp_dt = 0;
-short gyrox_temp = 0, gyroy_temp = 0, gyroz_temp = 0;
-
+float angle_roll_out, angle_pitch_out, angle_yaw_out;//the angle of each axis after sliding window filter
 
 int16_t deadzone = 20; //remote controller deadzone
 
-int16_t cNd1_theta = 0, cNd2_theta = 0, cNd3_theta = 0, cNd4_theta = 0; //cyberNation
-int16_t cNd1_omega = 0, cNd2_omega = 0, cNd3_omega = 0, cNd4_omega = 0; //cyberNation
-int16_t cNd1_alpha = 0, cNd2_alpha = 0, cNd3_alpha = 0, cNd4_alpha = 0; //cyberNation
+int16_t cNd1_theta = 0, cNd2_theta = 0, cNd3_theta = 0, cNd4_theta = 0; //cyberNation of angle
+int16_t cNd1_omega = 0, cNd2_omega = 0, cNd3_omega = 0, cNd4_omega = 0; //cyberNation of angle velocity
+int16_t cNd1_alpha = 0, cNd2_alpha = 0, cNd3_alpha = 0, cNd4_alpha = 0; //cyberNation of angle acceleration
+
+int16_t cNd1_memory=0,cNd2_memory=0,cNd3_memory=0,cNd4_memory=0;//cyberNation record
+int16_t cNd1_memory_temp=0,cNd2_memory_temp=0,cNd3_memory_temp=0,cNd4_memory_temp=0;//cyberNation record temporal
+u16 memory_time_stamp;//cyberNation record time stamp
+u8 memory_flag=0;//cyberNation record flag
 
 extern float MS561101BA_get_altitude(float scaling);//calculate the altitude
 
-float MS5611_Altitude;//using MS5611 pressure and temperature to calculate the Altitude.
-float Altitude_out = 0;
+extern int16_t Constrain_up(int16_t throttle, int16_t max);//constrain value from right
 
-extern void MS561101BA_getPressure(void);
-extern void MS561101BA_GetTemperature(void);
-float MS5611_Pressure;
-int32_t  TEMP;//barometer temperature
-float Pressure_chushi;
-int32_t TEMP_chushi;
-float temp_Pressure = 0;
-float temp_TEMP = 0;
+float MS5611_Altitude;//using MS5611 pressure and temperature to calculate the Altitude.
+float Altitude_out = 0;//Altitude calculated from MS5611 barometer pressure
+
+extern void MS561101BA_getPressure(void);//read pressure from MS5611 barometer
+extern void MS561101BA_GetTemperature(void);//read temperature from MS5611 barometer
+float MS5611_Pressure;//raw pressure data read from MS5611
+int32_t  TEMP;//MS5611 barometer temperature
+float Pressure_chushi;//raw pressure initial data read from MS5611
+int32_t TEMP_chushi;//MS5611 barometer temperature initial data
+float temp_TEMP = 0;//the temporal for temperature
 
 float roll_err, pitch_err, yaw_err;//error,roll_err=roll-desroll,desroll is the conversion of remote controller channel input
 float desroll, despitch, desyaw;//expectation
 
 short gyro_out[3];//after sliding windows filter
 short accz_out;//after filter, and trans
-short gyro_cybernation[3];
+short gyro_cybernation[3];//gyro data after kalman filter
 
-extern void Gyro_filter(void);
-extern void ANO_DT_Send_RCData(u16 thr, u16 yaw, u16 rol, u16 pit, u16 aux1, u16 aux2, u16 aux3, u16 aux4, u16 aux5, u16 aux6);
-extern void Accz_filter(void);
+extern void Gyro_filter(void);//gyro sliding window filter
+extern void Accz_filter(void);//acc sliding window filter
 
-float ACC_IIR_FACTOR;
-extern void Calculate_FilteringCoefficient(float Time, float Cut_Off);
-extern void ACC_IIR_Filter(void);
-
-extern void Altitude_hold_update(void);
+extern void Altitude_hold_update(void);//update altitude hold cybernation value
 
 //-----------barometer top
-int64_t OFF_;
+int64_t OFF_;//for MS5611_Pressure
 
 /*
 C1  Pressure Sensitivity |SENS_T1
@@ -167,25 +163,22 @@ int64_t OFF, SENS;
 
 int32_t P;//temperature compensated pressure (10:1200mbar with resolution 0.01mbar)
 
-uint32_t Pressure;//unit 0.01mbar
+uint32_t Pressure;//unit 0.01mbar,1bar=100,000Pa
 
-int64_t T2, TEMP2;
-int64_t OFF2, SENS2;
+int64_t T2, TEMP2;//for MS5611_Pressure
+int64_t OFF2, SENS2;//for MS5611_Pressure
 
 //-----------barometer bottom
 
-float scaling;
-float temp_jisuan;
-
-float temp_Altitude = 0;
-float Altitude_chushi;
+float scaling;//for altitude
+float temp_jisuan;//for altitude
 
 //---baro Alt karlman top
-extern void Kalman_filter_alt(void);
+extern void Kalman_filter_alt(void);//kalman filter for altitude
 float Altitude_minus = 0;//last barometer altitude converted by pressure
 float Altitude_dt = 0.1;//the delta time
 u32 Altitude_temp_time = 0; //record the time
-float Altitude_R = 20; //measurement variance ¡À20cm
+float Altitude_R = 20; //measurement variance pn 20cm
 float Altitude_Q = 0.01; //process variance 1/2*5*0.1^2
 float Altitude_K = 0; //kalman gain
 float Altitude_X_hat = 0; //init predict
@@ -194,17 +187,18 @@ float Altitude_P = 0; //error variance
 //---baro Alt karlman bottom
 
 //---baro Climb Karlman top
-extern void Kalman_filter_baro_climb(void);
-float baro_climb_R = 1;
+extern void Kalman_filter_baro_climb(void);//kalman filter for baro climb rate
+float baro_climb_R = 1;////measurement variance pn 1cm
 float baro_climb_Q = 1; //process Variance,3/10=0.3
 float baro_climb_K = 0; //kalman gain
 float baro_climb_X_hat = 0; //init predict for Climb rate
 float baro_climb_X_hat_minus = 0; //previous predict for Climb rate
 float baro_climb_P = 0; //error variance
+float baro_climb_rate = 0;//baro climb rate calculated from derivative 7 values filter
 //---baro Climb karlman bottom
 
 //---Kalman_filter_accz top
-extern void Kalman_filter_accz(void);//in 32767
+extern void Kalman_filter_accz(void);//kalman filter for z axis acceleration
 float accz_dt = 0.01; //the delta time
 u32 accz_temp_time = 0; //the record time
 float accz_R = 83; //positive negative 67,measurement variance
@@ -213,20 +207,10 @@ float accz_K = 0; //kalman gain
 float accz_X_hat = 15300; //init predict for accz
 float accz_X_hat_minus = 0; //previous predict for accz
 float accz_P = 140; //error variance
-
-float acc_climb_rate = 0; //the climb rate
-float acc_climb_abs_err = 0;
-float baro_climb_rate = 0;
-float acc_climb_rate_out = 0;
 //---Kalman_filter_accz bottom
 
-float rate2 = 0;
-float errInt2 = 0;
-float accz_IMU = 0;
-float err_rate1_rate2 = 0;
-
 //---Kalman_filter_accy top
-extern void Kalman_filter_accy(void);
+extern void Kalman_filter_accy(void);//kalman filter for y axis acceleration
 float accy_dt = 0.01; //the delta time
 u32 accy_temp_time = 0; //the record time
 float accy_R = 23; //3sigma 23*3=69;
@@ -238,7 +222,7 @@ float accy_P = 140; //error variance
 //---Kalman_filter_accy bottom
 
 //---Kalman_filter_accx top
-extern void Kalman_filter_accx(void);
+extern void Kalman_filter_accx(void);//kalman filter for x axis acceleration
 float accx_dt = 0.01; //the delta time
 u32 accx_temp_time = 0; //the record time
 float accx_R = 23; //3sigma 23*3=69;
@@ -250,7 +234,7 @@ float accx_P = 140; //error variance
 //---Kalman_filter_accx bottom
 
 //---pressure kalman top
-extern void Kalman_filter_pressure(void);
+extern void Kalman_filter_pressure(void);//kalman filter for baro pressure
 float pressure_dt = 0.01; //the delta time
 u32 pressure_temp_time = 0; //the record time
 float pressure_R = 20; //3sigma 7*3=21
@@ -262,9 +246,8 @@ float pressure_P = 0.1; //error variance
 //---pressure kalman bottom
 
 //---gyrometer kalman top
-extern void Kalman_filter_gyro(void);
+extern void Kalman_filter_gyro(void);//kalman filter for gyro
 //float gyro_dt[3] = {0.01,0.01,0.01}; //the delta time
-//u32 gyro_temp_time = 0; //the record time
 float gyro_R[3] = {1, 1, 1}; //3sigma measurement variance
 float gyro_Q[3] = {20, 25, 15}; //process Variance
 float gyro_K[3] = {0, 0, 0}; //kalman gain
@@ -272,8 +255,6 @@ float gyro_X_hat[3] = {0, 0, 0}; //init predict
 float gyro_X_hat_minus[3] = {0, 0, 0}; //previous predict
 float gyro_P[3] = {1, 1, 1}; //error variance,6sigma
 //---gyrometer kalman bottom
-
-extern void complementation_filter(void);
 
 float Ahd = 0; //altitude hold throttle offset
 
@@ -284,52 +265,43 @@ u32 debug[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //time pin,to observe the real f
 
 //deviation between 0.1ms£¬little boy do not be afraid
 
-int16_t d1 = 0, d2 = 0, d3 = 0, d4 = 0;
+int16_t d1 = 0, d2 = 0, d3 = 0, d4 = 0;//motor output value
 
-float alpha[3];
-float alpha_out[3];
+float alpha[3];//angle acceleration after derivative 7 values filter
+float alpha_out[3];//angle acceleration 
 
-extern void cyberNation_theta(void);
-extern void cyberNation_omega(void);
-extern void cyberNation_alpha(void);
+extern void cyberNation_theta(void);//cyberNation for angle
+extern void cyberNation_omega(void);//cyberNation for angle velocity
+extern void cyberNation_alpha(void);//cyberNation for angle acceleration
 
+float Altitude_samples[7] = {0, 0, 0, 0, 0, 0, 0};//for climb rate
+float Altitude_samples_time_stamps[7] = {0, 0, 0, 0, 0, 0, 0};//for climb rate
+u8 Altitude_sample_index = 0;//for climb rate
+u8 Altitude_samples_full = 0;//for climb rate
+extern void Derivative_Filter_baro_climb_rate(void);//for climb rate
 
-
-extern void Altitude_filter(void);
-extern void Filter_Altitude(void);
-
-float Altitude_samples[7] = {0, 0, 0, 0, 0, 0, 0};
-float Altitude_samples_time_stamps[7] = {0, 0, 0, 0, 0, 0, 0};
-u8 Altitude_sample_index = 0;
-u8 Altitude_samples_full = 0;
-extern void Derivative_Filter_baro_climb_rate(void);
-
-float gyrox_samples[7] = {0, 0, 0, 0, 0, 0, 0};
+float gyrox_samples[7] = {0, 0, 0, 0, 0, 0, 0};//for x axis angle 2 order derivative with t 
 float gyroy_samples[7] = {0, 0, 0, 0, 0, 0, 0};
 float gyroz_samples[7] = {0, 0, 0, 0, 0, 0, 0};
-float gyro_samples_time_stamps[7] = {0, 0, 0, 0, 0, 0, 0};
-u8 gyro_sample_index = 0;
-u8 gyro_samples_full = 0;
-extern void Derivative_Filter_alpha(void);
+float gyro_samples_time_stamps[7] = {0, 0, 0, 0, 0, 0, 0};//for angle 2 order derivative with t 
+u8 gyro_sample_index = 0;//for angle 2 order derivative with t
+u8 gyro_samples_full = 0;//for angle 2 order derivative with t
+extern void Derivative_Filter_alpha(void);//for angle acceleration
 
-
-u32 complementary_count = 1;
-
-u32 stopping_throttle_upper_bound_coarse = 1600;//the hover upper bound throttle
+u32 stopping_throttle_upper_bound_coarse = 1600;//the hover upper bound coarse throttle
 u32 stopping_throttle_lower_bound_coarse = 1400;
-u32 stopping_throttle_upper_bound_fine = 1600;
+u32 stopping_throttle_upper_bound_fine = 1600;//the hover upper bound fine throttle
 u32 stopping_throttle_lower_bound_fine = 1400;
-u32 stopping_throttle_temp;
+u32 stopping_throttle_temp;//temporal
 float baro_trigger = 8; //the trigger to record channel3_in i.e. throttle in
 u8 stopping_throttle_upper_recorded = 0;//flag for recording done
 u8 stopping_throttle_lower_recorded = 0;
 u8 stopping_throttle_both_recorded = 0;
-u32 hover_range_top = 10;
+u32 hover_range_top = 10;//for record the hover throttle
 u32 hover_range_bottom = 50;
 
-
 short accz_integral_deadzone = 3; //to create a deadzone and deal with steady noise
-extern void Angle_filter(void);
+extern void Angle_filter(void);//Angle sliding window filter
 
 //spi flash data top
 u8 datatemp[240];//to write a page in w25q64.
@@ -340,12 +312,10 @@ u8 datatemp2[252];//to write a page in w25q61.recording the cybernation quantiti
 u16 rpygxyzbc[7];//roll pitch yaw gyro_out x y z baro climb rate
 
 u8 datatemp3[234];
-u16 kgxyz_ogxyz_drpy_orpy_bcr[13];
-u32 temp_bcr;
+u16 kgxyz_ogxyz_drpy_orpy_bcr[13];//kalman gyro xyz,ouput gyro xyz,desired roll pitch yaw,ouput roll pitch yaw,baro climb rate
 //spi flash data bottom
 
-
-
+extern void cyber_memory_update(void);//record cybernation
 
 //main top
 int main(void)
@@ -354,7 +324,7 @@ int main(void)
     u8 jiesuokeyi = 0;//sign for ARMED
     u16 baochijiesuo = 0;//counter for holding ARMED channel input
     u16 baochijiasuo = 0;//counter for holding DISARMED channel input
-    u8 flymode = 0;
+    u8 flymode = 0;//fly mode
     int16_t temp1, temp2,  desthrottle, temp4; //to convert channel pulse width modulation wave to expectation angle
     u8 i;//for for loop
 	
@@ -458,12 +428,12 @@ int main(void)
 
     delay_ms(10);
 
-    SPI_Flash_Init();  		//we must first erase the whole chip ,i.e.,set all the bit
+    SPI_Flash_Init();//we must first erase the whole chip ,i.e.,set all the bit
 
     delay_ms(10);
 
 
-    while(SPI_Flash_ReadID() != W25Q64)		//W25Q64 has not been detected
+    while(SPI_Flash_ReadID() != W25Q64)//W25Q64 has not been detected
     {
         LED0 = !LED0; //DS0 toggle
         delay_ms(500);
@@ -554,6 +524,27 @@ int main(void)
         {
             erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
             debug[1]++;
+			if(jiesuokeyi)
+			{
+				if(__fabs(desroll)<1&&__fabs(despitch)<1&&__fabs(angle_roll_out)<1&&__fabs(angle_pitch_out)<1)//we are in fascinating state
+				{
+					memory_time_stamp++;
+					if(memory_time_stamp>500)//we are in the fascinating state more than one second.
+					{
+						cNd1_memory_temp=d1-Constrain_up(desthrottle, 1500);
+						cNd2_memory_temp=d2-Constrain_up(desthrottle, 1500);
+						cNd3_memory_temp=d3-Constrain_up(desthrottle, 1500);
+						cNd4_memory_temp=d4-Constrain_up(desthrottle, 1500);
+						memory_flag=1;//we are ready to update the new balance position
+						LED0=1;//using darkening red led to show something
+						memory_time_stamp=0;
+					}
+				}
+				else
+				{
+					memory_time_stamp=0;
+				}
+			}
         }
         //two ms bottom
 
@@ -831,11 +822,19 @@ int main(void)
 
             if(channel3_in > 1100 && jiesuokeyi) //only when channel3 >1100 and jiesuokeyi will update motor controlling
             {
+				if(!memory_flag)
+				{
                 cyberNation_alpha();//noise is too big
                 cyberNation_omega();
                 cyberNation_theta();
                 Sink_compensation();//sink offset superposition
                 Altitude_hold_update();//this frequency may be enough.altitude holding superposition
+				}
+				else
+				{
+					cyber_memory_update();
+					memory_flag=0;
+				}
                 Moto_Throttle(desthrottle);//core 2 called in 1 place
             }
 
@@ -862,7 +861,7 @@ int main(void)
                     if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
                     {
                         stopping_throttle_both_recorded = 1; //set all done flag
-                        LED0 = 1; //Darkening red LED£¬showing range recorded.
+                        //LED0 = 1; //Darkening red LED£¬showing range recorded.we want to test cNd_memory first
                     }
                 }
             }

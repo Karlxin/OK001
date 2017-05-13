@@ -1,8 +1,37 @@
+/*--------------------------------version information top-------------------------------------------
+Started at 2016
+Created by Karlxin(410824290@qq.com)
+Github:https://github.com/Karlxin/OK001.git
+OpenKarlCopter
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------version information bottom-------------------------------------------*/
 #include "usart.h"
 #include "ANO-Tech.h"
 
-//匿名地面站所需数据
+//Data for ANO master
 u8 data_to_send[50];
 #define BYTE0(dwTemp)       ( *( (char *)(&dwTemp)		) )
 #define BYTE1(dwTemp)       ( *( (char *)(&dwTemp) + 1) )
@@ -115,7 +144,21 @@ void ANO_DT_Send_Data(u8 *data, u8 len)
     for (i = 0; i < len; i++)usart1_send_char(data[i]);	//发送数据到串口1
 }
 
-void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw, s32 alt, u8 fly_model, u8 armed)
+
+/*******************************************************************************
+  * @Name			ANO_DT_Send_Status
+  * @Description	send status to master
+  * @Input    		angle_rol,angle_pit,angle_yaw,alt,fly_model,armed
+  * @Output   		data_to_send[50]
+  * @Return   		None
+*******************************************************************************/
+void ANO_DT_Send_Status
+	(float angle_rol, 
+		float angle_pit, 
+			float angle_yaw,
+				s32 alt, 
+			u8 fly_model, 
+			u8 armed)
 {
     u8 _cnt = 0;
     vs16 _temp;
@@ -157,7 +200,26 @@ void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw, s32 a
     ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
-void ANO_DT_Send_Senser(s16 a_x, s16 a_y, s16 a_z, s16 g_x, s16 g_y, s16 g_z, s16 m_x, s16 m_y, s16 m_z, s32 bar)
+
+
+/*******************************************************************************
+  * @Name			ANO_DT_Send_Senser
+  * @Description	send sensor raw to master
+  * @Input    		a_X,a_y,a_z,g_x,g_y,g_z,m_x,m_y,m_z,bar
+  * @Output   		data_to_send[50]
+  * @Return   		None
+*******************************************************************************/
+void ANO_DT_Send_Senser
+	(s16 a_x, 
+s16 a_y, 
+s16 a_z,
+s16 g_x, 
+s16 g_y,
+s16 g_z, 
+s16 m_x, 
+s16 m_y, 
+s16 m_z,
+s32 bar)
 {
     u8 _cnt = 0;
     vs16 _temp;
@@ -209,7 +271,23 @@ void ANO_DT_Send_Senser(s16 a_x, s16 a_y, s16 a_z, s16 g_x, s16 g_y, s16 g_z, s1
     ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
-void ANO_DT_Send_MotoPWM(u16 m_1, u16 m_2, u16 m_3, u16 m_4, u16 m_5, u16 m_6, u16 m_7, u16 m_8)
+
+/*******************************************************************************
+  * @Name			ANO_DT_Send_MotoPWM
+  * @Description	send motor PWM to master
+  * @Input    		m1,m2,m3,m4,m5,m6,m7,m8
+  * @Output   		data_to_send[50]
+  * @Return   		None
+*******************************************************************************/
+void ANO_DT_Send_MotoPWM
+	(u16 m_1,
+u16 m_2,
+u16 m_3,
+u16 m_4, 
+u16 m_5,
+u16 m_6,
+u16 m_7, 
+u16 m_8)
 {
     u8 _cnt = 0;
     u8 sum = 0;
@@ -247,7 +325,25 @@ void ANO_DT_Send_MotoPWM(u16 m_1, u16 m_2, u16 m_3, u16 m_4, u16 m_5, u16 m_6, u
     ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
-void ANO_DT_Send_RCData(u16 thr, u16 yaw, u16 rol, u16 pit, u16 aux1, u16 aux2, u16 aux3, u16 aux4, u16 aux5, u16 aux6)
+
+/*******************************************************************************
+	* @Name				ANO_DT_Send_RCData
+	* @Description		send Remote Controller data to master
+	* @Input    		thr,yaw,rol,pit,aux1,aux2,aux3,aux4,aux5,aux6
+	* @Output   		data_to_send[49:0]
+	* @Return   		None
+*******************************************************************************/
+void ANO_DT_Send_RCData
+	(u16 thr,
+u16 yaw,
+u16 rol,
+u16 pit,
+u16 aux1,
+u16 aux2,
+u16 aux3,
+u16 aux4,
+u16 aux5,
+u16 aux6)
 {
     u8 _cnt = 0;
     u8 i;

@@ -1,3 +1,34 @@
+/*--------------------------------version information top-------------------------------------------
+Started at 2016
+Created by Karlxin(410824290@qq.com)
+Github:https://github.com/Karlxin/OK001.git
+OpenKarlCopter
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------version information bottom-------------------------------------------*/
+
 #include "moto.h"
 #include "stm32f10x.h"
 #include "delay.h"
@@ -91,8 +122,20 @@ extern float Altitude_out;
 
 extern short gyro_cybernation[3];
 
-//just constrain from right
-int16_t Constrain_up(int16_t throttle, int16_t max)
+extern int16_t cNd1_memory,cNd2_memory,cNd3_memory,cNd4_memory;
+extern int16_t cNd1_memory_temp,cNd2_memory_temp,cNd3_memory_temp,cNd4_memory_temp;
+
+/*******************************************************************************
+	* @Name				Constrain_up
+	* @Description		constrain value from right
+	* @Input			throttle,max
+	* @Use    			None
+	* @Output			None
+	* @Return			throttle;max
+*******************************************************************************/
+int16_t Constrain_up(
+int16_t throttle,
+int16_t max)
 {
     if(throttle > max)
     {
@@ -101,8 +144,19 @@ int16_t Constrain_up(int16_t throttle, int16_t max)
     return throttle;
 }
 
-//constrain both side
-int16_t Constrain(int16_t throttle, int16_t max, int16_t min)
+
+/*******************************************************************************
+	* @Name				Constrain
+	* @Description		constrain both side
+	* @Input			throttle,max,min
+	* @Use    			None
+	* @Output			None
+	* @Return			throttle;max;min
+*******************************************************************************/
+int16_t Constrain(
+int16_t throttle,
+int16_t max,
+int16_t min)
 {
     if((min < throttle) && (throttle < max))
     {
@@ -118,11 +172,21 @@ int16_t Constrain(int16_t throttle, int16_t max, int16_t min)
     return min;
 }
 
-
-//directive controller motor ,core 1
-void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int16_t MOTO4_PWM)
+/*******************************************************************************
+	* @Name				Moto_PwmRflash
+	* @Description		the last function to control motor
+	* @Input			MOTO1_PWM,MOTO2_PWM,MOTO3_PWM,MOTO4_PWM
+	* @Use    			Moto_PwmMax
+	* @Output			None
+	* @Return			None
+*******************************************************************************/
+void Moto_PwmRflash(
+int16_t MOTO1_PWM,
+int16_t MOTO2_PWM,
+int16_t MOTO3_PWM,
+int16_t MOTO4_PWM)
 {
-
+	//directive controller motor ,core 1
     if(MOTO1_PWM > Moto_PwmMax)	MOTO1_PWM = Moto_PwmMax;//最大油门保持
     if(MOTO2_PWM > Moto_PwmMax)	MOTO2_PWM = Moto_PwmMax;
     if(MOTO3_PWM > Moto_PwmMax)	MOTO3_PWM = Moto_PwmMax;
@@ -138,27 +202,57 @@ void Moto_PwmRflash(int16_t MOTO1_PWM, int16_t MOTO2_PWM, int16_t MOTO3_PWM, int
     TIM3->CCR4 = MOTO4_PWM;
 }
 
-//core 2
+/*******************************************************************************
+	* @Name				Moto_Throttle
+	* @Description		Control motor
+	* @Input			desthrottle
+	* @Use    			(arguments too much)
+	* @Output			d1,d2,d3,d4
+	* @Return			None
+*******************************************************************************/
 void Moto_Throttle(int16_t desthrottle)
 {
-
-    d1 = Constrain_up(desthrottle, 1500) + Constrain(cNd1_alpha, 15, -15) + Constrain(cNd1_omega, 130, -130) + Constrain(cNd1_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) ; //              CW3     1CCW	     / \				 
-    d2 = Constrain_up(desthrottle, 1500) + Constrain(cNd2_alpha, 15, -15) + Constrain(cNd2_omega, 130, -130) + Constrain(cNd2_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) ; //  planform        * *           / | \ X轴      	     Y轴
-    d3 = Constrain_up(desthrottle, 1500) + Constrain(cNd3_alpha, 15, -15) + Constrain(cNd3_omega, 130, -130) + Constrain(cNd3_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) ; //                   *              |                <=======
-    d4 = Constrain_up(desthrottle, 1500) + Constrain(cNd4_alpha, 15, -15) + Constrain(cNd4_omega, 130, -130) + Constrain(cNd4_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) ; //      	      CCW2    4CW         |
+	//core 2
+    d1 = Constrain_up(desthrottle, 1500) + Constrain(cNd1_alpha, 15, -15) + Constrain(cNd1_omega, 130, -130) + Constrain(cNd1_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) + Constrain((int16_t)cNd1_memory, 30, -30) ;
+    d2 = Constrain_up(desthrottle, 1500) + Constrain(cNd2_alpha, 15, -15) + Constrain(cNd2_omega, 130, -130) + Constrain(cNd2_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) + Constrain((int16_t)cNd2_memory, 30, -30) ;
+    d3 = Constrain_up(desthrottle, 1500) + Constrain(cNd3_alpha, 15, -15) + Constrain(cNd3_omega, 130, -130) + Constrain(cNd3_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) + Constrain((int16_t)cNd3_memory, 30, -30) ;
+    d4 = Constrain_up(desthrottle, 1500) + Constrain(cNd4_alpha, 15, -15) + Constrain(cNd4_omega, 130, -130) + Constrain(cNd4_theta, 60, -60)   + Constrain((int16_t)Scd, 23, -23) + Constrain((int16_t)Ahd, 10, -10) + Constrain((int16_t)cNd4_memory, 30, -30) ;
 
     Moto_PwmRflash(d1, d2, d3, d4);//core 1 called in place 3
+	
+	 //              CW 3    1CCW	     / \				 
+	 //  planform        * *            / | \ X axis     Y axis
+	 //                   *               |             <=======
+	 //      	     CCW2    4 CW         |
+	
 }
 
-//cybernation offset.core 3
+
+/*******************************************************************************
+	* @Name				cyberNation_theta
+	* @Description		cyberNation for angle
+	* @Input			None
+	* @Use    			(arguments too much)
+	* @Output			cNd1_theta,cNd2_theta,cNd3_theta,cNd4_theta
+	* @Return			None
+*******************************************************************************/
 void cyberNation_theta(void)
 {
+	//cybernation offset.core 3
     cNd1_theta = +roll_err * kp_theta_x + pitch_err * kp_theta_y + yaw_err * kp_theta_z ;
     cNd2_theta = -roll_err * kp_theta_x - pitch_err * kp_theta_y + yaw_err * kp_theta_z;
     cNd3_theta = -roll_err * kp_theta_x + pitch_err * kp_theta_y - yaw_err * kp_theta_z;
     cNd4_theta = +roll_err * kp_theta_x - pitch_err * kp_theta_y - yaw_err * kp_theta_z;
 }
 
+/*******************************************************************************
+	* @Name				cyberNation_omega
+	* @Description		cyberNation for angle velocity
+	* @Input			None
+	* @Use				gyro_cybernation[2:0],kp_omega_x,kp_omega_y,kp_omega_z
+	* @Output			cNd1_omega,cNd2_omega,cNd3_omega,cNd4_omega
+	* @Return			None
+*******************************************************************************/
 void cyberNation_omega(void)
 {
     cNd1_omega = +gyro_cybernation[0] * kp_omega_x + gyro_cybernation[1] * kp_omega_y + gyro_cybernation[2] * kp_omega_z;
@@ -167,6 +261,14 @@ void cyberNation_omega(void)
     cNd4_omega = +gyro_cybernation[0] * kp_omega_x - gyro_cybernation[1] * kp_omega_y - gyro_cybernation[2] * kp_omega_z;
 }
 
+/*******************************************************************************
+	* @Name				cyberNation_alpha
+	* @Description		cyberNation for angle acceleration
+	* @Input			None
+	* @Use				alpha_out[1:0],kp_alpha_x,kp_alpha_y
+	* @Output			cNd1_alpha,cNd2_alpha,cNd3_alpha,cNd4_alpha
+	* @Return			None
+*******************************************************************************/
 void cyberNation_alpha(void)
 {
     cNd1_alpha = +alpha_out[0] * kp_alpha_x + alpha_out[1] * kp_alpha_y;
@@ -176,6 +278,14 @@ void cyberNation_alpha(void)
 }
 
 #define Filter_Num 6//sliding window with 6 values
+/*******************************************************************************
+	* @Name				Gyro_filter
+	* @Description		gyro sliding window filter
+	* @Input    		None
+	* @Use				gyro[2:0],gyro_chushi[2:0]
+	* @Output   		gyro_out[2:0]
+	* @Return   		None
+*******************************************************************************/
 void Gyro_filter(void)
 {
     static float Filter_x[Filter_Num], Filter_y[Filter_Num], Filter_z[Filter_Num];
@@ -207,6 +317,14 @@ void Gyro_filter(void)
 }
 
 #define Filter_Num2 6//sliding window with <input> values
+/*******************************************************************************
+	* @Name				Accz_filter
+	* @Description		acc sliding window filter
+	* @Input    		None
+	* @Use    			aacz,aacz_chushi
+	* @Output   		accz_out
+	* @Return   		None
+*******************************************************************************/
 void Accz_filter(void)
 {
     static float Filter_accz[Filter_Num2];
@@ -235,6 +353,14 @@ extern float angle_roll_out, angle_pitch_out, angle_yaw_out;
 
 
 #define Filter_Num3 4//sliding window with 6 values
+/*******************************************************************************
+	* @Name				Angle_filter
+	* @Description		Angle sliding window filter
+	* @Input    		None
+	* @Use    			roll,pitch,yaw
+	* @Output   		angle_roll_out,angle_pitch_out,angle_yaw_out
+	* @Return   		None
+*******************************************************************************/
 void Angle_filter(void)
 {
     static float Filter_angle_roll[Filter_Num3], Filter_angle_pitch[Filter_Num3], Filter_angle_yaw[Filter_Num3];
@@ -265,26 +391,6 @@ void Angle_filter(void)
     }
 }
 
-
-
-/******************************************************************************
-函数原型：	void Calculate_FilteringCoefficient(float Time, float Cut_Off)
-功    能：	iir低通滤波参数计算
-*******************************************************************************/
-void Calculate_FilteringCoefficient(float Time, float Cut_Off)
-{
-    ACC_IIR_FACTOR = Time / ( Time + 1 / (2.0f * 3.1415927 * Cut_Off) );
-}
-
-/******************************************************************************
-函数原型：	void ACC_IIR_Filter(struct _acc *Acc_in,struct _acc *Acc_out)
-功    能：	iir低通滤波
-*******************************************************************************/
-void ACC_IIR_Filter(void)
-{
-    accz_out = accz_out + ACC_IIR_FACTOR * (aacz - accz_out);
-}
-
 extern float accz_R;
 extern float accz_Q;
 extern float accz_K;
@@ -292,9 +398,17 @@ extern float accz_X_hat;
 extern float accz_X_hat_minus;
 extern float accz_P;
 
-//this function use kalman filter to filt accz
+/*******************************************************************************
+	* @Name				Kalman_filter_accz
+	* @Description		kalman filter for z axis acceleration
+	* @Input    		None
+	* @Use    			accz_X_hat,accz_P,accy_Q,accz_R,aacz
+	* @Output   		accz_X_hat_minus,accz_P,accz_K,accz_X_hat
+	* @Return   		None
+*******************************************************************************/
 void Kalman_filter_accz(void)
 {
+	//in 32767
     //time update
     accz_X_hat_minus = accz_X_hat;
     accz_P = accz_P + accz_Q;
@@ -312,7 +426,14 @@ extern float accy_X_hat;
 extern float accy_X_hat_minus;
 extern float accy_P;
 
-//this function use kalman filter to filt accy
+/*******************************************************************************
+	* @Name				Kalman_filter_accy
+	* @Description		kalman filter for y axis acceleration
+	* @Input    		None
+	* @Use    			accy_X_hat,accy_P,accy_Q,accy_R,aacy
+	* @Output   		accy_X_hat_minus,accy_P,accy_K,accy_X_hat
+	* @Return   		None
+*******************************************************************************/
 void Kalman_filter_accy(void)
 {
     //time update
@@ -332,7 +453,14 @@ extern float accx_X_hat;
 extern float accx_X_hat_minus;
 extern float accx_P;
 
-//this function use kalman filter to filt accx
+/*******************************************************************************
+	* @Name				Kalman_filter_accx
+	* @Description		kalman filter for x axis acceleration
+	* @Input    		None
+	* @Use    			accx_X_hat,accx_P,accx_Q,accx_R,aacx
+	* @Output   		accx_X_hat_minus,accx_P,accy_K,accx_X_hat
+	* @Return   		None
+*******************************************************************************/
 void Kalman_filter_accx(void)
 {
     //time update
@@ -346,13 +474,20 @@ void Kalman_filter_accx(void)
 }
 
 
-extern float acc_climb_rate;
 extern short aacz_chushi;
 extern u8 stopping_throttle_both_recorded;
 extern u32 stopping_throttle_upper_bound_fine;
 extern u32 stopping_throttle_lower_bound_fine;
 extern float baro_climb_rate;
 
+/*******************************************************************************
+	* @Name				Altitude_hold_update
+	* @Description		update altitude hold cybernation value
+	* @Input    		None
+	* @Use    			stopping_throttle_both_recorded,desroll,despitch,pitch,roll,stopping_throttle_lower_bound_fine,channel3_in,stopping_throttle_upper_bound_fine,kp_vel_z,baro_climb_rate
+	* @Output   		Ahd
+	* @Return   		None
+*******************************************************************************/
 void Altitude_hold_update(void)
 {
     if(stopping_throttle_both_recorded && _fabsf(desroll) < 0.5 && _fabsf(despitch) < 0.5 && _fabsf(pitch) < 1 && _fabsf(roll) < 1 && stopping_throttle_lower_bound_fine < channel3_in && channel3_in < stopping_throttle_upper_bound_fine)
@@ -367,12 +502,28 @@ void Altitude_hold_update(void)
     Ahd = 0; //we temporarily disuse this
 }
 
-//degree to radian by multiplier 0.0174533
+/*******************************************************************************
+	* @Name				Sink_compensation
+	* @Description		Sink compensation
+	* @Input    		None
+	* @Use    			channel3_in,desroll,despitch
+	* @Output   		Scd
+	* @Return   		None
+*******************************************************************************/
 void Sink_compensation(void)
 {
+	//degree to radian by multiplier 0.0174533
     Scd = (channel3_in - 1000) / (cosf(desroll * 0.0174533) * cosf(despitch * 0.0174533)) - (channel3_in - 1000); //cosine between EarthFrame_Z with BodyFrame_Z
 }
 
+/*******************************************************************************
+	* @Name				Kalman_filter_gyro
+	* @Description		kalman filter for three axes gyro
+	* @Input    		None
+	* @Use    			gyro_X_hat[2:0],gyro_P[2:0],gyro_Q[2:0],gyro_R[2:0],gyro_out[2:0]
+	* @Output   		gyro_X_hat_minus[2:0],gyro_P[2:0],gyro_K[2:0],gyro_X_hat[2:0]
+	* @Return   		None
+*******************************************************************************/
 void Kalman_filter_gyro(void)
 {
     u8 i = 0;
@@ -389,4 +540,23 @@ void Kalman_filter_gyro(void)
     }
 }
 
-
+/*******************************************************************************
+	* @Name				cyber_memory_update
+	* @Description		record cybernation
+	* @Input    		None
+	* @Use    			cNd1_memory_temp,cNd2_memory_temp,cNd3_memory_temp,cNd4_memory_temp
+	* @Output   		cNd1_memory,cNd2_memory,cNd3_memory,cNd4_memory,cNd1_memory_temp,cNd2_memory_temp,cNd3_memory_temp,cNd4_memory_temp
+	* @Return   		None
+*******************************************************************************/
+void cyber_memory_update(void)
+{
+	cNd1_memory=cNd1_memory_temp;
+	cNd2_memory=cNd2_memory_temp;
+	cNd3_memory=cNd3_memory_temp;
+	cNd4_memory=cNd4_memory_temp;
+	
+	cNd1_memory_temp=0;
+	cNd2_memory_temp=0;
+	cNd3_memory_temp=0;
+	cNd4_memory_temp=0;
+}

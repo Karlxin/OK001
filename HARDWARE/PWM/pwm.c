@@ -1,57 +1,86 @@
+/*--------------------------------version information top-------------------------------------------
+Started at 2016
+Created by Karlxin(410824290@qq.com)
+Github:https://github.com/Karlxin/OK001.git
+OpenKarlCopter
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------version information bottom-------------------------------------------*/
 #include "pwm.h"
 
-/*功能名称IM3_PWM_Init(u16 arr,u16 psc)
-	描述      TIM3产生四路PWM
-*/
-
+/*******************************************************************************
+	* @Name				TIM3_PWM_Init
+	* @Description		TIM3 outputing four PWM
+	* @Input			arr,psc
+	* @Use				None
+	* @Output			None
+	* @Return			None
+*******************************************************************************/
 void TIM3_PWM_Init(u16 arr, u16 psc)
 {
-    GPIO_InitTypeDef GPIO_InitStructure;
-    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-    TIM_OCInitTypeDef  TIM_OCInitStructure;
+    GPIO_InitTypeDef GPIO_InitStructure;//define a structure of GPIO_InitTypeDef to initialize timer 3
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;//define a structure of TIM_TimeBaseInitTypeDef to initialize timer 3
+    TIM_OCInitTypeDef  TIM_OCInitStructure;//define a structure of TIM_OCInitTypeDef to initialize timer 3
 
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC  | RCC_APB2Periph_AFIO, ENABLE);  //使能GPIO外设和AFIO复用功能模块时钟使能
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);//Enable timer 3 clock of advanced peripheral bus 1
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC  | RCC_APB2Periph_AFIO, ENABLE);  //Enable GPIO and AFIO clock
 
-    GPIO_PinRemapConfig(GPIO_FullRemap_TIM3, ENABLE); //Timer3全映射 GPIOC-> 6,7,8,9                                                                    	 //用于TIM3的CH2输出的PWM通过该LED显示
+    GPIO_PinRemapConfig(GPIO_FullRemap_TIM3, ENABLE); //Timer3 reflected to GPIOC-> 6,7,8,9
 
-    //设置该引脚为复用输出功能,输出TIM3 CH1 CH2 CH3 CH4 的PWM脉冲波形
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9; //初始化GPIO
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //复用推挽输出
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
+	//setting pins as Alternative Function Input Output,outputting TIM3 CH1 CH2 CH3 CH4 PWM
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9; //Define the GPIO pins desired
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //Alternative Function Push Pull output
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;//define frequency as 50 MHz
+    GPIO_Init(GPIOC, &GPIO_InitStructure);//initialize GPIO with setting of GPIO_InitStructure
 
-    TIM_TimeBaseStructure.TIM_Period = arr; //设置在下一个更新事件装入活动的自动重装载寄存器周期的值
-    TIM_TimeBaseStructure.TIM_Prescaler = psc; //设置用来作为TIMx时钟频率除数的预分频值  不分频
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0; //设置时钟分割:TDTS = Tck_tim
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //TIM向上计数模式
-    TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure); //根据TIM_TimeBaseInitStruct中指定的参数初始化TIMx的时间基数单位
+    TIM_TimeBaseStructure.TIM_Period = arr; //setting auto reload register value
+    TIM_TimeBaseStructure.TIM_Prescaler = psc; //setting prescaler avlue
+    TIM_TimeBaseStructure.TIM_ClockDivision = 0; //setting clock division as DIV1
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //setting TIM counter mode as up
+    TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure); //initialize TIM with setting of TIM_TimeBaseInitStruct
 
-
-    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1; //选择定时器模式:TIM脉冲宽度调制模式1
-    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable; //比较输出使能
-    TIM_OCInitStructure.TIM_Pulse = 0; //设置待装入捕获比较寄存器的脉冲值
-    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High; //输出极性:TIM输出比较极性高
-
-    TIM_OC1Init(TIM3, &TIM_OCInitStructure);  //根据TIM_OCInitStruct中指定的参数初始化外设TIMx
-    TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);  //使能TIMx在CCR1上的预装载寄存器
+    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1; //setting Output Compare TIM as PWM1 mode
+    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable; //Enable Output State
+    TIM_OCInitStructure.TIM_Pulse = 0; //Specifies the pulse value to be loaded into the Capture Compare Register as 0x0000
+    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High; //Specifies the output polarity as High
+    TIM_OC1Init(TIM3, &TIM_OCInitStructure);  //initialize TIM with setting of TIM_OCInitStruct
+    TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);  //Enable TIM3 preload register in CCR1
 
 
-    TIM_OC2Init(TIM3, &TIM_OCInitStructure);  //根据TIM_OCInitStruct中指定的参数初始化外设TIMx
-    TIM_OC2PreloadConfig(TIM3, TIM_OCPreload_Enable);  //使能TIMx在CCR2上的预装载寄存器
+    TIM_OC2Init(TIM3, &TIM_OCInitStructure);  
+    TIM_OC2PreloadConfig(TIM3, TIM_OCPreload_Enable);  //Enable TIM3 preload register in CCR2
 
-    TIM_OC3Init(TIM3, &TIM_OCInitStructure);  //根据TIM_OCInitStruct中指定的参数初始化外设TIMx
-    TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);  //使能TIMx在CCR3上的预装载寄存器
+    TIM_OC3Init(TIM3, &TIM_OCInitStructure);  
+    TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);  
 
-    TIM_OC4Init(TIM3, &TIM_OCInitStructure);  //根据TIM_OCInitStruct中指定的参数初始化外设TIMx
-    TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);  //使能TIMx在CCR4上的预装载寄存器
+    TIM_OC4Init(TIM3, &TIM_OCInitStructure);  
+    TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);  
 
-    TIM_ARRPreloadConfig(TIM3, ENABLE); //使能TIMx在ARR上的预装载寄存器
+    TIM_ARRPreloadConfig(TIM3, ENABLE); //Enable TIM3 preload register in ARR
 
-
-    TIM_Cmd(TIM3, ENABLE);  //使能TIMx外设
-
-
+    TIM_Cmd(TIM3, ENABLE);  //Enable TIM3 peripheral
 }
 
 

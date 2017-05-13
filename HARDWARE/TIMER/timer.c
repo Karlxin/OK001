@@ -1,3 +1,33 @@
+/*--------------------------------version information top-------------------------------------------
+Started at 2016
+Created by Karlxin(410824290@qq.com)
+Github:https://github.com/Karlxin/OK001.git
+OpenKarlCopter
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------version information bottom-------------------------------------------*/
 #include "timer.h"
 #include <stdio.h>
 
@@ -70,9 +100,18 @@ extern u32 yibaihaomiao2;
 
 extern u32 channel1_in, channel2_in, channel3_in, channel4_in; 				//收到的遥控占空比(1000~2000)
 
-//定时器五计时初始化上端
-
-void TIM5_Int_Init(u16 arr, u16 psc)
+//Timer 5 init top
+/*******************************************************************************
+	* @Name				TIM5_Int_Init
+	* @Description		to initialize timer 5
+	* @Input			arr,psc
+	* @Use				None
+	* @Output			None
+	* @Return			None
+*******************************************************************************/
+void TIM5_Int_Init(
+u16 arr,
+u16 psc)
 {
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
@@ -95,13 +134,11 @@ void TIM5_Int_Init(u16 arr, u16 psc)
 
     TIM_Cmd(TIM5, ENABLE);  //使能TIMx外设
 }
-
-//定时器五计时初始化下端
+//Timer 5 init bottom
 
 extern float scaling;
 extern float MS5611_Pressure;
 extern float Pressure_chushi;
-extern void Altitude_filter(void);
 extern float baro_climb_rate;
 extern float Altitude_out;
 extern float Altitude_minus;
@@ -117,6 +154,14 @@ extern float Altitude_samples_time_stamps[7];
 extern void Kalman_filter_baro_climb(void);
 extern u8 Altitude_samples_full;
 
+/*******************************************************************************
+	* @Name				TIM5_IRQHandler
+	* @Description		to handle interrupt by timer 5
+	* @Input			None
+	* @Use				None
+	* @Output			xitongshijian
+	* @Return			None
+*******************************************************************************/
 void TIM5_IRQHandler(void)   //TIM5中断,每过一毫秒就搞一次
 {
     if (TIM_GetITStatus(TIM5, TIM_IT_Update) != RESET) //检查指定的TIM中断发生与否:TIM 中断源
@@ -127,12 +172,21 @@ void TIM5_IRQHandler(void)   //TIM5中断,每过一毫秒就搞一次
 }
 
 
-//定时器4通道1输入捕获配置
 
-TIM_ICInitTypeDef TIM4_ICInitStructure;
-
-void TIM4_Cap_Init(u16 arr, u16 psc)
+/*******************************************************************************
+	* @Name				TIM4_Cap_Init
+	* @Description		init timer 4 PWM capture
+	* @Input			arr,psc
+	* @Use				None
+	* @Output			None
+	* @Return			None
+*******************************************************************************/
+void TIM4_Cap_Init(
+u16 arr,
+u16 psc)
 {
+	TIM_ICInitTypeDef TIM4_ICInitStructure;
+	
     GPIO_InitTypeDef GPIO_InitStructure;
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
@@ -198,7 +252,14 @@ void TIM4_Cap_Init(u16 arr, u16 psc)
 
 }
 
-//定时器4中断服务程序
+/*******************************************************************************
+	* @Name				TIM4_IRQHandler
+	* @Description		to handle interrupt by timer 4
+	* @Input			None
+	* @Use				None
+	* @Output			channel1_in,channel2_in,channel3_in,channel4_in
+	* @Return			None
+*******************************************************************************/
 void TIM4_IRQHandler(void)
 {
     if ((TIM4CH1_CAPTURE_STA & 0X80) == 0) 		//还未成功捕获

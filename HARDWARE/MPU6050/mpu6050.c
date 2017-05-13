@@ -1,10 +1,44 @@
+/*--------------------------------version information top-------------------------------------------
+Started at 2016
+Created by Karlxin(410824290@qq.com)
+Github:https://github.com/Karlxin/OK001.git
+OpenKarlCopter
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------version information bottom-------------------------------------------*/
 #include "mpu6050.h"
 #include "sys.h"
 #include "delay.h"
 #include "usart.h"
-//初始化MPU6050
-//返回值:0,成功
-//    其他,错误代码
+/*******************************************************************************
+  * @Name			MPU_Init
+  * @Description	initialize acclerometer and gyrometer
+  * @Input    		None
+  * @Output   		None
+  * @Return   		0:success,else:error
+*******************************************************************************/
 u8 MPU_Init(void)
 {
     u8 res;

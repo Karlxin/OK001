@@ -3053,9 +3053,14 @@ void mget_ms(unsigned long *time)
 {
 
 }
-//mpu6050,dmp初始化
-//返回值:0,正常
-//    其他,失败
+
+/*******************************************************************************
+  * @Name			mpu_dmp_init
+  * @Description	initialize hardware digital motion process 
+  * @Input    		None
+  * @Output   		None
+  * @Return   		0:success,else:error
+*******************************************************************************/
 u8 mpu_dmp_init(void)
 {
     u8 res = 0;
