@@ -383,11 +383,3 @@ void Derivative_Filter_alpha(void)
 }
 
 
-
-
-
-
-
-
-
-

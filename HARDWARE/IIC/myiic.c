@@ -155,28 +155,3 @@ u8 IIC_Read_Byte(unsigned char ack)
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -2,7 +2,7 @@
 	
 2.realizing:	1.adding black box for gaxyz 
 
-3.problem:	
+3.problem:	1.the accelerometer do not need that much frequency to sense data.
 
 4.reason:	 
 

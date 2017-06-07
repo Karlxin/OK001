@@ -339,7 +339,7 @@ int main(void)
     u32 i5 = 0; //for write flash
     //0 to record raw grro acc xyz,1 to record the cybernation quantities
     //2 to record the 1 and expectation roll pitch yaw and kalman gyro
-    u8 record_option = 3;
+    u8 record_option = 1;
 
     SystemInit();//over 0.02628ms
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//priority,parent divided by 0£¬1£¬2£¬3£»subclass by 0,1(2:0),over 0.0004ms
@@ -518,12 +518,13 @@ int main(void)
         }
         //ms bottom
 
-
         //two ms top
         if(xitongshijian * 0.05f > erhaomiao + 1)
         {
             erhaomiao = xitongshijian * 0.05f; //visiting by two milliseconds resolution
             debug[1]++;
+			
+			/*//memory top
 			if(jiesuokeyi)
 			{
 				if(__fabs(desroll)<1&&__fabs(despitch)<1&&__fabs(angle_roll_out)<1&&__fabs(angle_pitch_out)<1)//we are in fascinating state
@@ -545,9 +546,10 @@ int main(void)
 					memory_time_stamp=0;
 				}
 			}
+			//memory bottom*/
+			
         }
         //two ms bottom
-
 
         //five ms top
         if(xitongshijian * 0.02f > wuhaomiao + 1)
@@ -615,8 +617,6 @@ int main(void)
                         kgxyz_ogxyz_drpy_orpy_bcr[10] = ((u16)datatemp3[21] << 8) | ((u16)datatemp3[20]);
                         kgxyz_ogxyz_drpy_orpy_bcr[11] = ((u16)datatemp3[23] << 8) | ((u16)datatemp3[22]);
                         kgxyz_ogxyz_drpy_orpy_bcr[12] = ((u16)datatemp3[25] << 8) | ((u16)datatemp3[24]);
-
-
 
                         ANO_DT_Send_Senser(kgxyz_ogxyz_drpy_orpy_bcr[0], kgxyz_ogxyz_drpy_orpy_bcr[1], \
                                            kgxyz_ogxyz_drpy_orpy_bcr[2], kgxyz_ogxyz_drpy_orpy_bcr[3], kgxyz_ogxyz_drpy_orpy_bcr[4], \
@@ -824,7 +824,7 @@ int main(void)
             {
 				if(!memory_flag)
 				{
-                cyberNation_alpha();//noise is too big
+                //cyberNation_alpha();//noise is too big
                 cyberNation_omega();
                 cyberNation_theta();
                 Sink_compensation();//sink offset superposition
@@ -1079,7 +1079,6 @@ int main(void)
         }
         //seconds bottom
 
-
         /*
         //five seconds top
         if(xitongshijian * 0.00002f > wumiaozhong + 1)
@@ -1088,8 +1087,6 @@ int main(void)
         }
         //five seconds bottom
         */
-
-
     }
     //loop bottom
 }

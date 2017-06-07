@@ -352,7 +352,7 @@ void Accz_filter(void)
 extern float angle_roll_out, angle_pitch_out, angle_yaw_out;
 
 
-#define Filter_Num3 4//sliding window with 6 values
+#define Filter_Num3 1//sliding window with 6 values
 /*******************************************************************************
 	* @Name				Angle_filter
 	* @Description		Angle sliding window filter
@@ -499,7 +499,7 @@ void Altitude_hold_update(void)
     {
         Ahd = 0;
     }
-    Ahd = 0; //we temporarily disuse this
+    //Ahd = 0; //we temporarily disuse this
 }
 
 /*******************************************************************************
