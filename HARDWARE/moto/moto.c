@@ -74,10 +74,10 @@ static float kp_omega_x = 0.0045778, kp_omega_y = 0.0045778, kp_omega_z = 0.0007
 //10000*0.03=300
 //angle by degree
 //palstance in 32768，±2000，也就是相当于输出角度=原始数据乘以0.0610370,那么将这个数放到KP_OMEGA也行
-float KP_THETA_X = 2.6, KP_THETA_Y = 2.6, KP_THETA_Z = 2.6;//常量
-float kp_theta_x = 2.6, kp_theta_y = 2.6, kp_theta_z = 2.6;//变量
-float KP_OMEGA_X = 0.52 * 0.0610370, KP_OMEGA_Y = 0.52 * 0.0610370, KP_OMEGA_Z = 0.6 * 0.0610370; //常量
-float kp_omega_x = 0.52 * 0.0610370, kp_omega_y = 0.52 * 0.0610370, kp_omega_z = 0.6 * 0.0610370; //变量
+float KP_THETA_X = 2.1, KP_THETA_Y = 2.1, KP_THETA_Z = 2.1;//常量
+float kp_theta_x = 2.1, kp_theta_y = 2.1, kp_theta_z = 2.1;//变量
+float KP_OMEGA_X = 0.42 * 0.0610370, KP_OMEGA_Y = 0.42 * 0.0610370, KP_OMEGA_Z = 0.5 * 0.0610370; //常量
+float kp_omega_x = 0.42 * 0.0610370, kp_omega_y = 0.42 * 0.0610370, kp_omega_z = 0.5 * 0.0610370; //变量
 float KP_ALPHA_X = 0.03* 0.0610370, KP_ALPHA_Y = 0.03* 0.0610370, KP_ALPHA_Z = 0;
 float kp_alpha_x = 0.03* 0.0610370, kp_alpha_y = 0.03* 0.0610370, kp_alpha_z = 0;
 //6*130=780;
@@ -352,7 +352,7 @@ void Accz_filter(void)
 extern float angle_roll_out, angle_pitch_out, angle_yaw_out;
 
 
-#define Filter_Num3 1//sliding window with 6 values
+#define Filter_Num3 6//sliding window with 6 values
 /*******************************************************************************
 	* @Name				Angle_filter
 	* @Description		Angle sliding window filter

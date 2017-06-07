@@ -267,8 +267,8 @@ u32 debug[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //time pin,to observe the real f
 
 int16_t d1 = 0, d2 = 0, d3 = 0, d4 = 0;//motor output value
 
-float alpha[3];//angle acceleration after derivative 7 values filter
-float alpha_out[3];//angle acceleration 
+float alpha[3]={0,0,0};//angle acceleration after derivative 7 values filter
+float alpha_out[3]={0,0,0};//angle acceleration 
 
 extern void cyberNation_theta(void);//cyberNation for angle
 extern void cyberNation_omega(void);//cyberNation for angle velocity
@@ -330,9 +330,9 @@ int main(void)
 	
     u8 USART1_Open = 1;//Open Serial by 500000 baud rate by setting it.
     u8 USART2_Open = 0;//Open Serial by 115200 baud rate by setting it.
-    u8 kalman_gyro_Open = 1; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
+    u8 kalman_gyro_Open = 0; //Open kalman instead of sliding window for gyro.we set it to 1 to open.
     u8 Flash_read_Open = 0; //flag for W25Q64 flash read
-    u8 Flash_write_Open = 1; //flag for W25Q64 flash write
+    u8 Flash_write_Open = 0; //flag for W25Q64 flash write
     u32 i2 = 0; //for read flash
     u32 i3 = 0; //for write flash
     u32 i4 = 0; //for write flash
@@ -487,15 +487,20 @@ int main(void)
             if(!MPU_Get_Gyroscope(&gyro[0], &gyro[1], &gyro[2]))  //get gyro data,over 0.6ms
             {
                 Gyro_filter();//sliding window filter,over 0.02ms
+				gyro_cybernation[0] =gyro_out[0];
+				gyro_cybernation[1] =gyro_out[1];
+				gyro_cybernation[2] =gyro_out[2];
+				
                 if(kalman_gyro_Open)
                 {
                     Kalman_filter_gyro();
+					gyro_cybernation[0] = gyro_X_hat_minus[0];
+					gyro_cybernation[1] = gyro_X_hat_minus[1];
+					gyro_cybernation[2] = gyro_X_hat_minus[2];
                 }
-                gyro_cybernation[0] = gyro_X_hat_minus[0];
-                gyro_cybernation[1] = gyro_X_hat_minus[1];
-                gyro_cybernation[2] = gyro_X_hat_minus[2];
 
                 //alpha top
+				/*
                 gyrox_samples[gyro_sample_index] = gyro_X_hat_minus[0];
                 gyroy_samples[gyro_sample_index] = gyro_X_hat_minus[1];
                 gyro_samples_time_stamps[gyro_sample_index] = xitongshijian * 0.0001f;
@@ -514,7 +519,9 @@ int main(void)
                     alpha_out[0] = alpha[0];
                     alpha_out[1] = alpha[1];
                 }
+				*/
                 //alpha bottom
+				
             }
             //read MPU bottom
 
@@ -864,7 +871,7 @@ int main(void)
                     if(stopping_throttle_upper_recorded && stopping_throttle_lower_recorded)
                     {
                         stopping_throttle_both_recorded = 1; //set all done flag
-                        //LED0 = 1; //Darkening red LED£¬showing range recorded.we want to test cNd_memory first
+                        LED0 = 1; //Darkening red LED£¬showing range recorded.we want to test cNd_memory first
                     }
                 }
             }
@@ -885,7 +892,7 @@ int main(void)
                 ANO_DT_Send_Status((float)angle_roll_out, (float)angle_pitch_out, (float)angle_yaw_out, (s32)MS5611_Altitude, (u8)flymode, (u8)jiesuokeyi); //over 0.4ms
                 ANO_DT_Send_MotoPWM((u16) d1, (u16) d2, (u16) d3, (u16) d4, (u16) stopping_throttle_upper_recorded, (u16) stopping_throttle_lower_recorded, (u16) stopping_throttle_both_recorded, (u16) 0); //over 0.5ms
                 ANO_DT_Send_RCData((u16)channel3_in, (u16) channel4_in, (u16) channel1_in, (u16) channel2_in, (u16) stopping_throttle_upper_bound_fine, (u16) stopping_throttle_lower_bound_fine, (u16) 0, (u16) 0, (u16) 0, (u16) 0); //0.5ms
-                ANO_DT_Send_Senser((s16)gyro_X_hat_minus[0] , (s16)gyro_X_hat_minus[1], (s16)gyro_X_hat_minus[2], (s16)gyro_out[0], (s16)gyro_out[1], (s16)gyro_out[2], (s16)Altitude_X_hat_minus, (s16)baro_climb_rate, (s16)baro_climb_X_hat_minus, (s32)MS5611_Altitude);
+                ANO_DT_Send_Senser((s16)gyro_cybernation[0] , (s16)gyro_cybernation[1], (s16)gyro_cybernation[2], (s16)gyro_out[0], (s16)gyro_out[1], (s16)gyro_out[2], (s16)Altitude_X_hat_minus, (s16)baro_climb_rate, (s16)baro_climb_X_hat_minus, (s32)MS5611_Altitude);
 
             }
             else if(USART2_Open && !Flash_write_Open && !Flash_read_Open)
@@ -895,7 +902,7 @@ int main(void)
             //serial bottom
 
             //write flash top
-            if(jiesuokeyi) //armed ok
+            if(jiesuokeyi&&Flash_write_Open) //armed ok
             {
                 switch(record_option)
                 {

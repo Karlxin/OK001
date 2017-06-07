@@ -278,7 +278,7 @@ void TIM4_IRQHandler(void)
                     tim4_T1 = 0;
                 tempup1 = TIM4CH1_CAPTURE_DOWNVAL - TIM4CH1_CAPTURE_UPVAL
                           + tim4_T1;		//得到总的高电平的时间
-                channel1_in = tempup1;		//总的高电平的时间
+                channel1_in = tempup1<2000?tempup1:channel1_in;		//总的高电平的时间
                 TIM4CH1_CAPTURE_STA = 0;		//捕获标志位清零
                 TIM_OC1PolarityConfig(TIM4, TIM_ICPolarity_Rising); //设置为上升沿捕获
             }
@@ -307,7 +307,7 @@ void TIM4_IRQHandler(void)
                     tim4_T2 = 0;
                 tempup2 = TIM4CH2_CAPTURE_DOWNVAL - TIM4CH2_CAPTURE_UPVAL
                           + tim4_T2;		//得到总的高电平的时间
-                channel2_in = tempup2;		//总的高电平的时间
+                channel2_in = tempup2<2000?tempup2:channel2_in;		//总的高电平的时间
                 TIM4CH2_CAPTURE_STA = 0;		//捕获标志位清零
                 TIM_OC2PolarityConfig(TIM4, TIM_ICPolarity_Rising); //设置为上升沿捕获
             }
@@ -336,7 +336,7 @@ void TIM4_IRQHandler(void)
                     tim4_T3 = 0;
                 tempup3 = TIM4CH3_CAPTURE_DOWNVAL - TIM4CH3_CAPTURE_UPVAL
                           + tim4_T3;		//得到总的高电平的时间
-                channel3_in = tempup3;		//总的高电平的时间
+                channel3_in = tempup3<2000?tempup3:channel3_in;		//总的高电平的时间
                 TIM4CH3_CAPTURE_STA = 0;		//捕获标志位清零
                 TIM_OC3PolarityConfig(TIM4, TIM_ICPolarity_Rising); //设置为上升沿捕获
             }
@@ -365,7 +365,7 @@ void TIM4_IRQHandler(void)
                     tim4_T4 = 0;
                 tempup4 = TIM4CH4_CAPTURE_DOWNVAL - TIM4CH4_CAPTURE_UPVAL
                           + tim4_T4;		//得到总的高电平的时间
-                channel4_in = tempup4;		//总的高电平的时间
+                channel4_in = tempup4<2000?tempup4:channel4_in;		//总的高电平的时间
                 TIM4CH4_CAPTURE_STA = 0;		//捕获标志位清零
                 TIM_OC4PolarityConfig(TIM4, TIM_ICPolarity_Rising); //设置为上升沿捕获
             }
