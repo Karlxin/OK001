@@ -475,11 +475,14 @@ int main(void)
             debug[0]++;
 
             //read MPU top
+			
+			/*
             if(!MPU_Get_Accelerometer(&aacx, &aacy, &aacz)) //get acc data,over 0.6ms
             {
                 Accz_filter();//sliding window filter
                 //Kalman_filter_accz();
             }
+			*/
 
             if(!MPU_Get_Gyroscope(&gyro[0], &gyro[1], &gyro[2]))  //get gyro data,over 0.6ms
             {
@@ -1076,6 +1079,9 @@ int main(void)
             {
                 LED1 = !LED1; //we are in the status of reading flash,so let the green led flash stand for reading flash
             }
+			//operation details:
+			//1.hold arm for more than about 20 second to erase all FLASH(black box)
+			//2.hold disarm for more than about 10 second to read FLASH in
         }
         //seconds bottom
 
